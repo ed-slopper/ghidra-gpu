@@ -1,7 +1,7 @@
 {
   "version": "7.0.0",
   "description": "GhidraMCP REST API Endpoint Specification",
-  "total_endpoints": 231,
+  "total_endpoints": 232,
   "categories": {
     "analysis": "Completeness analysis, control flow, similarity, memory inspection",
     "comment": "Plate, decompiler, disassembly and repeatable comments",
@@ -1983,6 +1983,25 @@
         "headless"
       ],
       "description": "GPU twin of analyze_dataflow: decompile the function (Ghidra's decompiler, CPU), build its whole def-use graph, and slice forward (consumers) or backward (producers) from every P-code value at an address, optionally only those touching a named variable/register."
+    },
+    {
+      "path": "/gpu_decompile_batch",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "functions",
+        "max_functions",
+        "threads",
+        "timeout_secs",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "Decompile many functions and analyse the decompiler's output, with the analysis on the backend of your choice. Decompilation itself is Ghidra's native decompiler on a CPU thread pool (it cannot run on a GPU); the analysis of every result -- dominators and loops of the high-level CFG, ops influenced by the parameters, ops contributing to the return value -- runs batched on CPU or GPU per backend=. Returns structure, not C text: use get_functions/force_decompile for pseudocode."
     },
     {
       "path": "/gpu_detect_crypto_constants",

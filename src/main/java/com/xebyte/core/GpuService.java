@@ -117,6 +117,8 @@ public class GpuService {
         TOOL_MAP.put("gpu_control_flow_analysis", List.of("analyze_control_flow", "find_dead_code"));
         TOOL_MAP.put("gpu_find_function_starts", List.of("find_code_gaps", "find_next_undefined_function"));
         TOOL_MAP.put("gpu_dataflow_slice", List.of("analyze_dataflow"));
+        // New capability rather than a twin: batch decompile (CPU) + analysis of the results (CPU or GPU).
+        TOOL_MAP.put("gpu_decompile_batch", List.of());
         TOOL_MAP.put("gpu_emulate_hash_batch", List.of("emulate_hash_batch"));
         TOOL_MAP.put("gpu_emulate_function_batch", List.of("emulate_function"));
     }
@@ -174,6 +176,7 @@ public class GpuService {
         Map.entry("gpu_find_similar_functions", Ops.MINHASH_SIM), Map.entry("gpu_diff_functions", Ops.LEVENSHTEIN),
         Map.entry("gpu_call_graph_analysis", Ops.SCC), Map.entry("gpu_control_flow_analysis", Ops.DOMINATORS),
         Map.entry("gpu_find_function_starts", Ops.PATTERN_SCAN), Map.entry("gpu_dataflow_slice", Ops.BFS),
+        Map.entry("gpu_decompile_batch", Ops.DOMINATORS),
         Map.entry("gpu_emulate_hash_batch", Ops.PCODE_VM), Map.entry("gpu_emulate_function_batch", Ops.PCODE_VM));
 
     @McpTool(path = "/gpu_selftest", description = "Run every GPU kernel against its CPU twin on generated inputs "
@@ -1515,6 +1518,224 @@ public class GpuService {
         return Response.ok(JsonHelper.mapOf("function", fn.getName(), "direction", forward ? "forward" : "backward",
             "seeds", seeds.size(), "graph_nodes", n, "graph_edges", g.edges(), "ops_reached", total,
             "addresses_reached", new ArrayList<>(addrs), "ops", reached, "execution", ex));
+    }
+
+    /** One decompiled function reduced to arrays: high-level CFG and def-use graph. */
+    private record Decompiled(Function fn, double ms, String error, int blocks, int[] cfgSrc, int[] cfgDst,
+                              int nodes, int ops, int[] duSrc, int[] duDst, int[] paramSeeds, int[] returnSeeds) {}
+
+    @McpTool(path = "/gpu_decompile_batch", description = "Decompile many functions and analyse the decompiler's "
+        + "output, with the analysis on the backend of your choice. Decompilation itself is Ghidra's native "
+        + "decompiler on a CPU thread pool (it cannot run on a GPU); the analysis of every result -- dominators and "
+        + "loops of the high-level CFG, ops influenced by the parameters, ops contributing to the return value -- "
+        + "runs batched on CPU or GPU per backend=. Returns structure, not C text: use get_functions/force_decompile "
+        + "for pseudocode.",
+        category = "gpu", access = ToolAccess.READ_ONLY)
+    public Response gpuDecompileBatch(
+            @Param(value = "functions", defaultValue = "", description = "Comma-separated names/addresses; empty = all non-thunk functions up to max_functions") String functions,
+            @Param(value = "max_functions", defaultValue = "200", description = "Cap when functions is empty") int maxFunctions,
+            @Param(value = "threads", defaultValue = "0", description = "Decompiler threads; 0 = available processors") int threads,
+            @Param(value = "timeout_secs", defaultValue = "60", description = "Per-function decompile timeout") int timeoutSecs,
+            @Param(value = "limit", defaultValue = "100", description = "Max functions listed") int limit,
+            @Param(value = "backend", defaultValue = "auto", description = P_BACKEND) String backend,
+            @Param(value = "program", defaultValue = "", description = P_PROGRAM) String programName) {
+        ServiceUtils.ProgramOrError pe = ServiceUtils.getProgramOrError(programProvider, programName);
+        if (pe.hasError()) return pe.error();
+        Program p = pe.program();
+        Backend be;
+        try { be = Backend.parse(backend); } catch (IllegalArgumentException e) { return Response.err(e.getMessage()); }
+        List<Function> fns = new ArrayList<>();
+        if (functions != null && !functions.isBlank()) {
+            for (String ref : functions.split(",")) {
+                if (ref.isBlank()) continue;
+                ServiceUtils.FunctionOrError fe = ServiceUtils.getFunctionOrError(p, ref.trim());
+                if (fe.hasError()) return fe.error();
+                fns.add(fe.function());
+            }
+        } else {
+            for (Function f : ProgramData.functions(p)) {
+                if (f.isThunk() || f.isExternal()) continue;
+                if (fns.size() >= Math.max(1, maxFunctions)) break;
+                fns.add(f);
+            }
+        }
+        if (fns.isEmpty()) return Response.err("no functions to decompile");
+
+        // Stage 1: native decompiler, CPU, one DecompInterface per worker thread.
+        int nThreads = threads > 0 ? threads : Math.max(1, Runtime.getRuntime().availableProcessors());
+        nThreads = Math.min(nThreads, fns.size());
+        long t0 = System.nanoTime();
+        Decompiled[] out = new Decompiled[fns.size()];
+        java.util.concurrent.atomic.AtomicInteger next = new java.util.concurrent.atomic.AtomicInteger();
+        List<Thread> workers = new ArrayList<>();
+        for (int w = 0; w < nThreads; w++) {
+            Thread th = new Thread(() -> {
+                DecompInterface ifc = new DecompInterface();
+                try {
+                    ifc.openProgram(p);
+                    int i;
+                    while ((i = next.getAndIncrement()) < fns.size()) out[i] = reduce(ifc, fns.get(i), timeoutSecs);
+                } finally {
+                    ifc.dispose();
+                }
+            }, "gpu-decompile-" + w);
+            th.setDaemon(true);
+            workers.add(th);
+            th.start();
+        }
+        for (Thread th : workers) {
+            try {
+                th.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return Response.err("interrupted");
+            }
+        }
+        double decompileMs = ms(t0);
+
+        // Stage 2: concatenate every function's graphs and analyse them in one batch.
+        long t1 = System.nanoTime();
+        List<int[][]> cfgs = new ArrayList<>();
+        List<Integer> src = new ArrayList<>(), dst = new ArrayList<>(), pSeeds = new ArrayList<>(), rSeeds = new ArrayList<>();
+        int[] nodeBase = new int[fns.size() + 1];
+        int base = 0;
+        for (int i = 0; i < out.length; i++) {
+            Decompiled d = out[i];
+            nodeBase[i] = base;
+            if (d.error == null) {
+                cfgs.add(GraphOps.Cfgs.graph(d.blocks, d.cfgSrc, d.cfgDst));
+                for (int k = 0; k < d.duSrc.length; k++) { src.add(base + d.duSrc[k]); dst.add(base + d.duDst[k]); }
+                for (int s : d.paramSeeds) pSeeds.add(base + s);
+                for (int s : d.returnSeeds) rSeeds.add(base + s);
+                base += d.nodes;
+            } else {
+                cfgs.add(GraphOps.Cfgs.graph(0, new int[0], new int[0]));
+            }
+        }
+        nodeBase[fns.size()] = base;
+        GraphOps.Cfgs c = GraphOps.Cfgs.of(cfgs);
+        int n = base;
+        GraphOps.Csr du = GraphOps.Csr.of(n, src.stream().mapToInt(Integer::intValue).toArray(), dst.stream().mapToInt(Integer::intValue).toArray());
+        GraphOps.Csr duRev = du.reverse();
+        int[] ps = pSeeds.stream().mapToInt(Integer::intValue).toArray(), rs = rSeeds.stream().mapToInt(Integer::intValue).toArray();
+        double buildMs = ms(t1);
+        long domWork = 0;
+        for (int gi = 0; gi < c.graphs(); gi++) { long nb = c.nodeOff()[gi + 1] - c.nodeOff()[gi]; domWork += nb * nb / 32 + nb; }
+        Dispatch.Outcome<GraphOps.DomResult> dom = Dispatch.run(Ops.DOMINATORS, be, domWork,
+            () -> GraphOps.dominatorsCpu(c), s -> GraphOps.dominatorsGpu(s, c), GraphOps.DomResult::same);
+        Dispatch.Outcome<int[]> fromParams = Dispatch.run(Ops.BFS, be, (long) n + du.edges(),
+            () -> GraphOps.bfsCpu(du, ps, Integer.MAX_VALUE), s -> GraphOps.bfsGpu(s, du, ps, Integer.MAX_VALUE), Arrays::equals);
+        Dispatch.Outcome<int[]> toReturn = Dispatch.run(Ops.BFS, be, (long) n + du.edges(),
+            () -> GraphOps.bfsCpu(duRev, rs, Integer.MAX_VALUE), s -> GraphOps.bfsGpu(s, duRev, rs, Integer.MAX_VALUE), Arrays::equals);
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        int failed = 0;
+        int[] idom = dom.value().idom();
+        for (int i = 0; i < out.length; i++) {
+            Decompiled d = out[i];
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("function", d.fn.getName());
+            m.put("address", d.fn.getEntryPoint().toString());
+            m.put("decompile_ms", d.ms);
+            if (d.error != null) { failed++; m.put("error", d.error); rows.add(m); continue; }
+            int gb = c.nodeOff()[i], nb = d.blocks, loops = 0, unreachable = 0;
+            for (int v = 0; v < nb; v++) {
+                if (idom[gb + v] == -2) { unreachable++; continue; }
+                for (int e = c.predRowPtr()[gb + v]; e < c.predRowPtr()[gb + v + 1]; e++) {
+                    int u = c.predCol()[e];
+                    if (idom[gb + u] != -2 && dominates(idom, gb, v, u)) loops++;
+                }
+            }
+            int paramOps = 0, retOps = 0;
+            for (int k = nodeBase[i]; k < nodeBase[i] + d.ops; k++) {
+                if (fromParams.value()[k] >= 0) paramOps++;
+                if (toReturn.value()[k] >= 0) retOps++;
+            }
+            m.put("high_blocks", nb);
+            m.put("high_edges", d.cfgSrc.length);
+            m.put("structured_complexity", nb == 0 ? 0 : d.cfgSrc.length - nb + 2);
+            m.put("loops", loops);
+            m.put("unreachable_blocks", unreachable);
+            m.put("pcode_ops", d.ops);
+            m.put("ops_influenced_by_params", paramOps);
+            m.put("ops_feeding_return", retOps);
+            rows.add(m);
+        }
+        Map<String, Object> ex = new LinkedHashMap<>();
+        ex.put("decompile_ms", decompileMs);
+        ex.put("decompile_backend", "cpu (Ghidra native decompiler, " + nThreads + " threads)");
+        ex.put("graph_build_ms", buildMs);
+        ex.put("dominators", dom.meta());
+        ex.put("param_influence", fromParams.meta());
+        ex.put("return_slice", toReturn.meta());
+        return Response.ok(JsonHelper.mapOf("functions_decompiled", fns.size() - failed, "failed", failed,
+            "total_high_blocks", c.nodes(), "total_dataflow_nodes", n, "functions", rows.subList(0, Math.min(rows.size(), Math.max(1, limit))),
+            "execution", ex));
+    }
+
+    /** Decompiles one function and flattens its HighFunction into the arrays the batch needs. */
+    private static Decompiled reduce(DecompInterface ifc, Function fn, int timeoutSecs) {
+        long t0 = System.nanoTime();
+        DecompileResults res;
+        try {
+            res = ifc.decompileFunction(fn, Math.max(1, timeoutSecs), TaskMonitor.DUMMY);
+        } catch (Exception e) {
+            return new Decompiled(fn, ms(t0), e.getMessage(), 0, null, null, 0, 0, null, null, null, null);
+        }
+        HighFunction hf = res == null ? null : res.getHighFunction();
+        double took = ms(t0);
+        if (hf == null) {
+            return new Decompiled(fn, took, res == null ? "no result" : String.valueOf(res.getErrorMessage()),
+                0, null, null, 0, 0, null, null, null, null);
+        }
+        List<ghidra.program.model.pcode.PcodeBlockBasic> blocks = hf.getBasicBlocks();
+        int entry = 0;
+        for (int i = 0; i < blocks.size(); i++) {
+            if (blocks.get(i).getStart() != null && blocks.get(i).getStart().equals(fn.getEntryPoint())) { entry = i; break; }
+        }
+        // local index with the entry block first
+        int[] local = new int[blocks.size()];
+        for (int i = 0, k = 1; i < blocks.size(); i++) local[i] = i == entry ? 0 : k++;
+        Map<ghidra.program.model.pcode.PcodeBlock, Integer> idx = new HashMap<>();
+        for (int i = 0; i < blocks.size(); i++) idx.put(blocks.get(i), local[i]);
+        List<Integer> cs = new ArrayList<>(), cd = new ArrayList<>();
+        for (int i = 0; i < blocks.size(); i++) {
+            var b = blocks.get(i);
+            for (int o = 0; o < b.getOutSize(); o++) {
+                Integer j = idx.get(b.getOut(o));
+                if (j != null) { cs.add(local[i]); cd.add(j); }
+            }
+        }
+        List<PcodeOpAST> ops = new ArrayList<>();
+        hf.getPcodeOps().forEachRemaining(ops::add);
+        Map<Integer, Integer> vn = new HashMap<>();
+        int nOps = ops.size();
+        int[] counter = {nOps};
+        java.util.function.Function<Varnode, Integer> vid = v -> vn.computeIfAbsent(((VarnodeAST) v).getUniqueId(), k -> counter[0]++);
+        List<Integer> s = new ArrayList<>(), d = new ArrayList<>(), ret = new ArrayList<>();
+        for (int i = 0; i < nOps; i++) {
+            PcodeOpAST op = ops.get(i);
+            for (Varnode in : op.getInputs()) { s.add(vid.apply(in)); d.add(i); }
+            if (op.getOutput() != null) { s.add(i); d.add(vid.apply(op.getOutput())); }
+            if (op.getOpcode() == ghidra.program.model.pcode.PcodeOp.RETURN) ret.add(i);
+        }
+        List<Integer> params = new ArrayList<>();
+        var lsm = hf.getLocalSymbolMap();
+        for (int pi = 0; pi < lsm.getNumParams(); pi++) {
+            var sym = lsm.getParamSymbol(pi);
+            var hv = sym == null ? null : sym.getHighVariable();
+            if (hv == null) continue;
+            for (Varnode v : hv.getInstances()) {
+                Integer id = vn.get(((VarnodeAST) v).getUniqueId());
+                if (id != null) params.add(id);
+            }
+        }
+        return new Decompiled(fn, took, null, blocks.size(), toArr(cs), toArr(cd), counter[0], nOps,
+            toArr(s), toArr(d), toArr(params), toArr(ret));
+    }
+
+    private static int[] toArr(List<Integer> l) {
+        return l.stream().mapToInt(Integer::intValue).toArray();
     }
 
     static boolean varMatches(Program p, Varnode v, String name) {

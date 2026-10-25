@@ -5,7 +5,7 @@ compute-bearing tool in the catalog. Each twin runs on **either** backend and re
 what it did, so an AI agent can decide per task whether the CPU or the GPU should do the
 work, and verify that both give the same answer.
 
-- 22 `gpu_*` MCP tools: 18 analysis tools plus `gpu_info`, `gpu_benchmark`, `gpu_advise`, `gpu_selftest`
+- 23 `gpu_*` MCP tools: 19 analysis tools plus `gpu_info`, `gpu_benchmark`, `gpu_advise`, `gpu_selftest`
 - 31 of the 209 upstream tools have a GPU twin; the other 178 have nothing a GPU could compute
   (database edits, single-record lookups, I/O, UI, the native decompiler). The full,
   generated table with a reason per tool is [GPU_COVERAGE.md](GPU_COVERAGE.md).
@@ -80,6 +80,7 @@ Through the MCP bridge the group is lazy-loaded like any other:
 | `gpu_dataflow_slice` | analyze_dataflow | decompile (CPU), then forward/backward slice over the def-use graph |
 | `gpu_emulate_hash_batch` | emulate_hash_batch | one GPU thread per candidate on a P-code VM |
 | `gpu_emulate_function_batch` | emulate_function | one GPU thread per input set; registers, scratch buffer, stack args |
+| `gpu_decompile_batch` | (new; force_decompile is the per-function C path) | parallel CPU decompile, then dominators/loops of the high-level CFG and parameter / return dataflow slices on the chosen backend |
 
 ## Measured on an RTX 3060 (driver 581.80)
 
@@ -103,6 +104,12 @@ Batched emulation of real x86 code lowered from Ghidra P-code (benchmark fixture
 | --- | ---: | ---: | --- |
 | `calc_crc16(data, len)`, 5000 random buffers, all 5000 CRCs correct | 3939 | 173 | 23x |
 | `compute_str_len` as a hash, 20000 candidates | 467 | 65 | 7x |
+
+`gpu_decompile_batch` on 400 kernel32 functions: decompile 4.8 s on 16 CPU threads (native
+decompiler); then dominators over 9,949 high-level blocks 23 ms CPU / 11 ms GPU, parameter-influence
+slice over 335k dataflow nodes 11 ms CPU / 20 ms GPU — so for decompiler output the agent should
+usually keep graph walks on the CPU and dominators on the GPU, which is what `auto` does after
+calibration.
 
 `gpu_benchmark` crossovers on the same card: the GPU wins from ~65 KB for IOC scans,
 ~100 KB for SHA-256, ~0.5 MB for pattern scans, ~1000 lanes for emulation and a few
@@ -150,9 +157,12 @@ than 8 bytes are `unsupported`, memory outside the windows and image is `bad_rea
 ## What stays on the CPU
 
 - Reading the program database — it lives in the JVM; every tool reports `extract_ms`.
-- Ghidra's decompiler — native C++, one function per call. `gpu_dataflow_slice`
-  decompiles on the CPU and runs the graph walk on the GPU, reporting both times.
-- The 178 catalog tools listed in [GPU_COVERAGE.md](GPU_COVERAGE.md).
+- Ghidra's decompiler — native C++, one function per call. `gpu_decompile_batch` runs it
+  on a CPU thread pool and analyses every result on the backend you pick; `gpu_dataflow_slice`
+  does the same for one slice. Both report decompile time separately from the analysis.
+- The 178 catalog tools listed in [GPU_COVERAGE.md](GPU_COVERAGE.md), each with a reason and, for
+  read-only ones, a measured time on kernel32.dll (the median is indistinguishable from a no-op HTTP
+  round trip; every one over 100 ms is the decompiler).
 
 ## Configuration
 

@@ -48,183 +48,188 @@ These tools are database edits, single-record lookups, I/O, lifecycle or UI acti
 wrap Ghidra's native decompiler / SLEIGH disassembler. Moving them to a GPU would only add
 a host-to-device copy around a lookup.
 
-| Upstream tool | Group | Why |
-| --- | --- | --- |
-| `analyze_for_documentation` | analysis | composite of decompile + indexed reads |
-| `analyze_function_complete` | analysis | composite of decompile + indexed reads; its structural part is gpu_control_flow_analysis |
-| `analyze_function_completeness` | analysis | documentation-quality scoring driven by the decompiler (native, CPU) and naming rules |
-| `apply_documentation` | analysis | documentation DB writes |
-| `configure_analyzer` | analysis | Ghidra-internal analysis control or single-item reads |
-| `detect_array_bounds` | analysis | inspects one address's references and neighbours |
-| `get_field_access_context` | analysis | Ghidra-internal analysis control or single-item reads |
-| `get_function_pcode` | analysis | dumps P-code produced by the decompiler (CPU) |
-| `list_analyzers` | analysis | Ghidra-internal analysis control or single-item reads |
-| `run_analysis` | analysis | Ghidra's auto-analyzers (Java plug-ins, CPU) |
-| `batch_set_comments` | comment | database write/read of one comment; no bulk computation |
-| `clear_function_comments` | comment | database write/read of one comment; no bulk computation |
-| `get_comment` | comment | database write/read of one comment; no bulk computation |
-| `set_comment` | comment | database write/read of one comment; no bulk computation |
-| `add_struct_field` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `analyze_global_completeness` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `analyze_struct_field_usage` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `apply_data_classification` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `apply_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `audit_global` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `audit_globals_in_function` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `clone_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `create_data_type_category` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `create_derived_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `create_enum` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `create_function_signature` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `create_struct` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `create_union` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `delete_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `find_data_types` | datatype | data type manager name lookup (indexed, small) |
-| `get_enum_values` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `get_struct_layout` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `get_type_size` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `get_valid_data_types` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `import_data_types` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `modify_struct_field` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `move_data_type_to_category` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `recreate_struct` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `remove_struct_field` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `rename_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `resize_struct` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `resolve_duplicate_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `set_global` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `suggest_field_names` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `validate_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `validate_function_prototype` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) |
-| `debugger/dynamic_to_static` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/interrupt` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/launch` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/launch_offers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/list_breakpoints` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/modules` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/read_memory` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/registers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/remove_breakpoint` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/resume` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/set_breakpoint` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/stack_trace` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/static_to_dynamic` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/status` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/step` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `debugger/traces` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound |
-| `archive_ingest_function` | documentation | HTTP upload to an external archive service |
-| `archive_ingest_program` | documentation | HTTP upload to an external archive service |
-| `batch_string_anchor_report` | documentation | joins documentation state to string references (indexed DB reads); raw string extraction itself is gpu_list_strings |
-| `get_function_documentation` | documentation | reads one function's documentation record |
-| `merge_program_documentation` | documentation | documentation DB writes |
-| `add_function_tag` | function | function database edits or single-function reads |
-| `batch_rename_function_components` | function | function database edits or single-function reads |
-| `clear_flow_and_repair` | function | function database edits or single-function reads |
-| `clear_instruction_flow_override` | function | function database edits or single-function reads |
-| `create_function` | function | function database edits or single-function reads |
-| `delete_function` | function | function database edits or single-function reads |
-| `delete_function_tag` | function | function database edits or single-function reads |
-| `disassemble_bytes` | function | Ghidra's SLEIGH disassembler (CPU) on caller-supplied bytes |
-| `disassemble_function` | function | Ghidra's SLEIGH disassembler (CPU); output is a listing read |
-| `force_decompile` | function | Ghidra's decompiler is native C++ run one function per process call; it cannot run on a GPU. Decompile-derived analyses (gpu_dataflow_slice) run their graph work on the GPU. |
-| `get_functions` | function | bundles decompiler output (native decompiler, see force_decompile) with indexed reads |
-| `list_class_members` | function | function database edits or single-function reads |
-| `list_function_tags` | function | function database edits or single-function reads |
-| `remove_function_tag` | function | function database edits or single-function reads |
-| `rename_function` | function | function database edits or single-function reads |
-| `rename_variables` | function | function database edits or single-function reads |
-| `set_function_no_return` | function | function database edits or single-function reads |
-| `set_function_prototype` | function | function database edits or single-function reads |
-| `set_function_tag_comment` | function | function database edits or single-function reads |
-| `set_function_this_type` | function | function database edits or single-function reads |
-| `set_variable_storage` | function | function database edits or single-function reads |
-| `set_variable_type` | function | function database edits or single-function reads |
-| `set_variables` | function | function database edits or single-function reads |
-| `get_ui_cursor` | getter | reads UI state |
-| `close_project` | headless | headless project lifecycle |
-| `create_project` | headless | headless project lifecycle |
-| `open_project` | headless | headless project lifecycle |
-| `convert_number` | listing | a single number conversion |
-| `get_entry_points` | listing | symbol table read |
-| `get_external_location` | listing | single external-location read |
-| `get_function_count` | listing | counter read |
-| `list_calling_conventions` | listing | compiler-spec read |
-| `list_globals` | listing | indexed symbol read |
-| `list_program_items` | listing | indexed listing read |
-| `list_shadowed_globals` | listing | indexed symbol read |
-| `analysis_status` | program | status read |
-| `close_program` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `create_memory_block` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `create_property_map` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `delete_bookmark` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `delete_property_map` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `exit_ghidra` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `get_address_spaces` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `get_language_metadata` | program | language description read |
-| `get_metadata` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `get_program_options` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `get_property` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `import_file` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `list_bookmarks` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `list_open_programs` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `list_project_files` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `list_properties` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `list_scripts` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `open_program` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `read_memory` | program | returns bytes; nothing to compute |
-| `reanalyze` | program | Ghidra's auto-analyzers (Java plug-ins, CPU) |
-| `remove_program_option` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `remove_property` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `run_ghidra_script` | program | runs arbitrary Java/Python scripts in Ghidra |
-| `run_script_inline` | program | runs arbitrary Java/Python scripts in Ghidra |
-| `save_all_programs` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `save_program` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `set_bookmark` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `set_image_base` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `set_memory_block` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `set_program_option` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `set_property` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `switch_program` | program | program lifecycle, options, memory-map edits or I/O; no computation |
-| `archive_project` | project | project/file lifecycle and I/O |
-| `create_folder` | project | project/file lifecycle and I/O |
-| `delete_file` | project | project/file lifecycle and I/O |
-| `delete_project` | project | project/file lifecycle and I/O |
-| `export_program` | project | project/file lifecycle and I/O |
-| `get_project_info` | project | project/file lifecycle and I/O |
-| `import_program` | project | project/file lifecycle and I/O |
-| `list_projects` | project | project/file lifecycle and I/O |
-| `move_file` | project | project/file lifecycle and I/O |
-| `move_folder` | project | project/file lifecycle and I/O |
-| `restore_project` | project | project/file lifecycle and I/O |
-| `checkin_program` | server | Ghidra Server networking and version control |
-| `server/admin/set_permissions` | server | Ghidra Server networking and version control |
-| `server/admin/terminate_all_checkouts` | server | Ghidra Server networking and version control |
-| `server/admin/terminate_checkout` | server | Ghidra Server networking and version control |
-| `server/admin/users` | server | Ghidra Server networking and version control |
-| `server/authenticate` | server | Ghidra Server networking and version control |
-| `server/checkouts` | server | Ghidra Server networking and version control |
-| `server/connect` | server | Ghidra Server networking and version control |
-| `server/disconnect` | server | Ghidra Server networking and version control |
-| `server/repositories` | server | Ghidra Server networking and version control |
-| `server/repository/create` | server | Ghidra Server networking and version control |
-| `server/repository/file` | server | Ghidra Server networking and version control |
-| `server/repository/files` | server | Ghidra Server networking and version control |
-| `server/status` | server | Ghidra Server networking and version control |
-| `server/version_control/add` | server | Ghidra Server networking and version control |
-| `server/version_control/checkout` | server | Ghidra Server networking and version control |
-| `server/version_control/undo_checkout` | server | Ghidra Server networking and version control |
-| `server/version_history` | server | Ghidra Server networking and version control |
-| `can_rename_at_address` | symbol | database write/read of one symbol; no bulk computation |
-| `create_label` | symbol | database write/read of one symbol; no bulk computation |
-| `delete_label` | symbol | database write/read of one symbol; no bulk computation |
-| `rename_symbol` | symbol | database write/read of one symbol; no bulk computation |
-| `prompt_policy` | system | prompt policy configuration |
-| `check_connection` | utility | server identity / UI navigation |
-| `mcp/health` | utility | server identity / UI navigation |
-| `mcp/schema` | utility | server identity / UI navigation |
-| `tool/goto_address` | utility | server identity / UI navigation |
-| `tool/running_tools` | utility | server identity / UI navigation |
-| `add_memory_reference` | xref | single-address reference lookups/edits (indexed DB reads) |
-| `get_assembly_context` | xref | reads a few instructions around one address |
-| `get_xrefs_from` | xref | single-address reference lookups/edits (indexed DB reads) |
-| `remove_reference` | xref | single-address reference lookups/edits (indexed DB reads) |
+Measured, not assumed: every read-only tool below was called on kernel32.dll (Windows 11, x64, 4301 functions incl. externals, auto-analysed)
+(`python -m tools.gpu.measure_cpu_only`, best of 3, wall time including HTTP). 34 timed; median **15.6 ms** against an HTTP round-trip floor of 15.6 ms (`/check_connection`), i.e. a median of **0.0 ms** of actual work -- at or below the ~1-2 ms a GPU call spends on launch and transfer before computing anything.
+Every one slower than 100 ms runs Ghidra's native decompiler: `analyze_for_documentation`, `analyze_function_complete`, `analyze_function_completeness`, `force_decompile`, `get_function_documentation`, `get_function_pcode`, `get_functions`.
+Write tools are single database transactions and were not timed.
+
+| Upstream tool | Group | Why | Measured |
+| --- | --- | --- | --- |
+| `analyze_for_documentation` | analysis | composite of decompile + indexed reads | 710.0 ms |
+| `analyze_function_complete` | analysis | composite of decompile + indexed reads; its structural part is gpu_control_flow_analysis | 347.1 ms |
+| `analyze_function_completeness` | analysis | documentation-quality scoring driven by the decompiler (native, CPU) and naming rules | 364.6 ms |
+| `apply_documentation` | analysis | documentation DB writes | write |
+| `configure_analyzer` | analysis | Ghidra-internal analysis control or single-item reads | write |
+| `detect_array_bounds` | analysis | inspects one address's references and neighbours | write |
+| `get_field_access_context` | analysis | Ghidra-internal analysis control or single-item reads | 13.5 ms |
+| `get_function_pcode` | analysis | dumps P-code produced by the decompiler (CPU) | 364.4 ms |
+| `list_analyzers` | analysis | Ghidra-internal analysis control or single-item reads | 15.7 ms |
+| `run_analysis` | analysis | Ghidra's auto-analyzers (Java plug-ins, CPU) | write |
+| `batch_set_comments` | comment | database write/read of one comment; no bulk computation | write |
+| `clear_function_comments` | comment | database write/read of one comment; no bulk computation | write |
+| `get_comment` | comment | database write/read of one comment; no bulk computation | 15.9 ms |
+| `set_comment` | comment | database write/read of one comment; no bulk computation | write |
+| `add_struct_field` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `analyze_global_completeness` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 2.2 ms |
+| `analyze_struct_field_usage` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | needs a specific input |
+| `apply_data_classification` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `apply_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `audit_global` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 0.9 ms |
+| `audit_globals_in_function` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 14.9 ms |
+| `clone_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `create_data_type_category` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `create_derived_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `create_enum` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `create_function_signature` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `create_struct` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `create_union` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `delete_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `find_data_types` | datatype | data type manager name lookup (indexed, small) | 14.6 ms |
+| `get_enum_values` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | needs a specific input |
+| `get_struct_layout` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | needs a specific input |
+| `get_type_size` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | needs a specific input |
+| `get_valid_data_types` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | needs a specific input |
+| `import_data_types` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `modify_struct_field` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `move_data_type_to_category` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `recreate_struct` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `remove_struct_field` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `rename_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `resize_struct` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `resolve_duplicate_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `set_global` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | write |
+| `suggest_field_names` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | error |
+| `validate_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | needs a specific input |
+| `validate_function_prototype` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | needs a specific input |
+| `debugger/dynamic_to_static` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/interrupt` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/launch` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/launch_offers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/list_breakpoints` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/modules` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/read_memory` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/registers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/remove_breakpoint` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/resume` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/set_breakpoint` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/stack_trace` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/static_to_dynamic` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/status` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/step` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `debugger/traces` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server |
+| `archive_ingest_function` | documentation | HTTP upload to an external archive service | write |
+| `archive_ingest_program` | documentation | HTTP upload to an external archive service | write |
+| `batch_string_anchor_report` | documentation | joins documentation state to string references (indexed DB reads); raw string extraction itself is gpu_list_strings | 16.0 ms |
+| `get_function_documentation` | documentation | documentation record assembled from decompiler output (native, CPU) | 354.6 ms |
+| `merge_program_documentation` | documentation | documentation DB writes | write |
+| `add_function_tag` | function | function database edits or single-function reads | write |
+| `batch_rename_function_components` | function | function database edits or single-function reads | write |
+| `clear_flow_and_repair` | function | function database edits or single-function reads | write |
+| `clear_instruction_flow_override` | function | function database edits or single-function reads | write |
+| `create_function` | function | function database edits or single-function reads | write |
+| `delete_function` | function | function database edits or single-function reads | write |
+| `delete_function_tag` | function | function database edits or single-function reads | write |
+| `disassemble_bytes` | function | Ghidra's SLEIGH disassembler (CPU) on caller-supplied bytes | write |
+| `disassemble_function` | function | Ghidra's SLEIGH disassembler (CPU); output is a listing read | 15.8 ms |
+| `force_decompile` | function | Ghidra's decompiler is native C++ run one function per process call; it cannot run on a GPU. gpu_decompile_batch decompiles many functions on a CPU thread pool and runs the analysis of the results (dominators, loops, dataflow slices) on the backend the caller picks. | 355.5 ms |
+| `get_functions` | function | bundles decompiler output (native decompiler, see force_decompile) with indexed reads | 976.1 ms |
+| `list_class_members` | function | function database edits or single-function reads | needs a specific input |
+| `list_function_tags` | function | function database edits or single-function reads | 15.3 ms |
+| `remove_function_tag` | function | function database edits or single-function reads | write |
+| `rename_function` | function | function database edits or single-function reads | write |
+| `rename_variables` | function | function database edits or single-function reads | write |
+| `set_function_no_return` | function | function database edits or single-function reads | write |
+| `set_function_prototype` | function | function database edits or single-function reads | write |
+| `set_function_tag_comment` | function | function database edits or single-function reads | write |
+| `set_function_this_type` | function | function database edits or single-function reads | write |
+| `set_variable_storage` | function | function database edits or single-function reads | write |
+| `set_variable_type` | function | function database edits or single-function reads | write |
+| `set_variables` | function | function database edits or single-function reads | write |
+| `get_ui_cursor` | getter | reads UI state | needs live debugger / server / project context |
+| `close_project` | headless | headless project lifecycle | write |
+| `create_project` | headless | headless project lifecycle | write |
+| `open_project` | headless | headless project lifecycle | write |
+| `convert_number` | listing | a single number conversion | 14.7 ms |
+| `get_entry_points` | listing | symbol table read | 83.0 ms |
+| `get_external_location` | listing | single external-location read | 15.6 ms |
+| `get_function_count` | listing | counter read | 15.0 ms |
+| `list_calling_conventions` | listing | compiler-spec read | 14.1 ms |
+| `list_globals` | listing | indexed symbol read | 22.9 ms |
+| `list_program_items` | listing | indexed listing read | needs a specific input |
+| `list_shadowed_globals` | listing | indexed symbol read | 15.6 ms |
+| `analysis_status` | program | status read | needs a specific input |
+| `close_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `create_memory_block` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `create_property_map` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `delete_bookmark` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `delete_property_map` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `exit_ghidra` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `get_address_spaces` | program | program lifecycle, options, memory-map edits or I/O; no computation | 5.7 ms |
+| `get_language_metadata` | program | language description read | 15.9 ms |
+| `get_metadata` | program | program lifecycle, options, memory-map edits or I/O; no computation | 12.8 ms |
+| `get_program_options` | program | program lifecycle, options, memory-map edits or I/O; no computation | 1.4 ms |
+| `get_property` | program | program lifecycle, options, memory-map edits or I/O; no computation | error |
+| `import_file` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `list_bookmarks` | program | program lifecycle, options, memory-map edits or I/O; no computation | 1.3 ms |
+| `list_open_programs` | program | program lifecycle, options, memory-map edits or I/O; no computation | 3.7 ms |
+| `list_project_files` | program | program lifecycle, options, memory-map edits or I/O; no computation | needs a specific input |
+| `list_properties` | program | program lifecycle, options, memory-map edits or I/O; no computation | needs a specific input |
+| `list_scripts` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.9 ms |
+| `open_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `read_memory` | program | returns bytes; nothing to compute | 1.1 ms |
+| `reanalyze` | program | Ghidra's auto-analyzers (Java plug-ins, CPU) | write |
+| `remove_program_option` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `remove_property` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `run_ghidra_script` | program | runs arbitrary Java/Python scripts in Ghidra | write |
+| `run_script_inline` | program | runs arbitrary Java/Python scripts in Ghidra | write |
+| `save_all_programs` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `save_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `set_bookmark` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `set_image_base` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `set_memory_block` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `set_program_option` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `set_property` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `switch_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | write |
+| `archive_project` | project | project/file lifecycle and I/O | write |
+| `create_folder` | project | project/file lifecycle and I/O | write |
+| `delete_file` | project | project/file lifecycle and I/O | write |
+| `delete_project` | project | project/file lifecycle and I/O | write |
+| `export_program` | project | project/file lifecycle and I/O | write |
+| `get_project_info` | project | project/file lifecycle and I/O | needs live debugger / server / project context |
+| `import_program` | project | project/file lifecycle and I/O | write |
+| `list_projects` | project | project/file lifecycle and I/O | needs live debugger / server / project context |
+| `move_file` | project | project/file lifecycle and I/O | write |
+| `move_folder` | project | project/file lifecycle and I/O | write |
+| `restore_project` | project | project/file lifecycle and I/O | write |
+| `checkin_program` | server | Ghidra Server networking and version control | write |
+| `server/admin/set_permissions` | server | Ghidra Server networking and version control | write |
+| `server/admin/terminate_all_checkouts` | server | Ghidra Server networking and version control | write |
+| `server/admin/terminate_checkout` | server | Ghidra Server networking and version control | write |
+| `server/admin/users` | server | Ghidra Server networking and version control | needs live debugger / server / project context |
+| `server/authenticate` | server | Ghidra Server networking and version control | write |
+| `server/checkouts` | server | Ghidra Server networking and version control | needs live debugger / server / project context |
+| `server/connect` | server | Ghidra Server networking and version control | write |
+| `server/disconnect` | server | Ghidra Server networking and version control | write |
+| `server/repositories` | server | Ghidra Server networking and version control | needs live debugger / server / project context |
+| `server/repository/create` | server | Ghidra Server networking and version control | write |
+| `server/repository/file` | server | Ghidra Server networking and version control | needs live debugger / server / project context |
+| `server/repository/files` | server | Ghidra Server networking and version control | needs live debugger / server / project context |
+| `server/status` | server | Ghidra Server networking and version control | needs live debugger / server / project context |
+| `server/version_control/add` | server | Ghidra Server networking and version control | write |
+| `server/version_control/checkout` | server | Ghidra Server networking and version control | write |
+| `server/version_control/undo_checkout` | server | Ghidra Server networking and version control | write |
+| `server/version_history` | server | Ghidra Server networking and version control | needs live debugger / server / project context |
+| `can_rename_at_address` | symbol | database write/read of one symbol; no bulk computation | 3.8 ms |
+| `create_label` | symbol | database write/read of one symbol; no bulk computation | write |
+| `delete_label` | symbol | database write/read of one symbol; no bulk computation | write |
+| `rename_symbol` | symbol | database write/read of one symbol; no bulk computation | write |
+| `prompt_policy` | system | prompt policy configuration | not served by this server |
+| `check_connection` | utility | server identity / UI navigation | needs live debugger / server / project context |
+| `mcp/health` | utility | server identity / UI navigation | needs live debugger / server / project context |
+| `mcp/schema` | utility | server identity / UI navigation | needs live debugger / server / project context |
+| `tool/goto_address` | utility | server identity / UI navigation | not served by this server |
+| `tool/running_tools` | utility | server identity / UI navigation | not served by this server |
+| `add_memory_reference` | xref | single-address reference lookups/edits (indexed DB reads) | write |
+| `get_assembly_context` | xref | reads a few instructions around one address | needs a specific input |
+| `get_xrefs_from` | xref | single-address reference lookups/edits (indexed DB reads) | 15.0 ms |
+| `remove_reference` | xref | single-address reference lookups/edits (indexed DB reads) | write |

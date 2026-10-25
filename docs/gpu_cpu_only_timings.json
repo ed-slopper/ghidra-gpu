@@ -1,0 +1,579 @@
+{
+  "binary": "kernel32.dll (Windows 11, x64, 4301 functions incl. externals, auto-analysed)",
+  "function": "FUN_18000f650",
+  "http_floor_ms": 15.63,
+  "results": {
+    "/add_function_tag": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/add_memory_reference": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/add_struct_field": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/analysis_status": {
+      "status": "needs a specific input, not timed"
+    },
+    "/analyze_for_documentation": {
+      "ms": 710.02,
+      "status": "ok"
+    },
+    "/analyze_function_complete": {
+      "ms": 347.1,
+      "status": "ok"
+    },
+    "/analyze_function_completeness": {
+      "ms": 364.58,
+      "status": "ok"
+    },
+    "/analyze_global_completeness": {
+      "ms": 2.23,
+      "status": "ok"
+    },
+    "/analyze_struct_field_usage": {
+      "status": "needs a specific input, not timed"
+    },
+    "/apply_data_classification": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/apply_data_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/apply_documentation": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/archive_ingest_function": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/archive_ingest_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/archive_project": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/audit_global": {
+      "ms": 0.95,
+      "status": "ok"
+    },
+    "/audit_globals_in_function": {
+      "ms": 14.92,
+      "status": "ok"
+    },
+    "/batch_rename_function_components": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/batch_set_comments": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/batch_string_anchor_report": {
+      "ms": 16.04,
+      "status": "ok"
+    },
+    "/can_rename_at_address": {
+      "ms": 3.76,
+      "status": "ok"
+    },
+    "/check_connection": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/checkin_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/clear_flow_and_repair": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/clear_function_comments": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/clear_instruction_flow_override": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/clone_data_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/close_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/close_project": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/configure_analyzer": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/convert_number": {
+      "ms": 14.67,
+      "status": "ok"
+    },
+    "/create_data_type_category": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_derived_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_enum": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_folder": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_function": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_function_signature": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_label": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_memory_block": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_project": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_property_map": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_struct": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/create_union": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/debugger/dynamic_to_static": {
+      "status": "not served by this server"
+    },
+    "/debugger/interrupt": {
+      "status": "not served by this server"
+    },
+    "/debugger/launch": {
+      "status": "not served by this server"
+    },
+    "/debugger/launch_offers": {
+      "status": "not served by this server"
+    },
+    "/debugger/list_breakpoints": {
+      "status": "not served by this server"
+    },
+    "/debugger/modules": {
+      "status": "not served by this server"
+    },
+    "/debugger/read_memory": {
+      "status": "not served by this server"
+    },
+    "/debugger/registers": {
+      "status": "not served by this server"
+    },
+    "/debugger/remove_breakpoint": {
+      "status": "not served by this server"
+    },
+    "/debugger/resume": {
+      "status": "not served by this server"
+    },
+    "/debugger/set_breakpoint": {
+      "status": "not served by this server"
+    },
+    "/debugger/stack_trace": {
+      "status": "not served by this server"
+    },
+    "/debugger/static_to_dynamic": {
+      "status": "not served by this server"
+    },
+    "/debugger/status": {
+      "status": "not served by this server"
+    },
+    "/debugger/step": {
+      "status": "not served by this server"
+    },
+    "/debugger/traces": {
+      "status": "not served by this server"
+    },
+    "/delete_bookmark": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/delete_data_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/delete_file": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/delete_function": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/delete_function_tag": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/delete_label": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/delete_project": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/delete_property_map": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/detect_array_bounds": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/disassemble_bytes": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/disassemble_function": {
+      "ms": 15.75,
+      "status": "ok"
+    },
+    "/exit_ghidra": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/export_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/find_data_types": {
+      "ms": 14.58,
+      "status": "ok"
+    },
+    "/force_decompile": {
+      "ms": 355.51,
+      "status": "ok"
+    },
+    "/get_address_spaces": {
+      "ms": 5.7,
+      "status": "ok"
+    },
+    "/get_assembly_context": {
+      "status": "needs a specific input, not timed"
+    },
+    "/get_comment": {
+      "ms": 15.86,
+      "status": "ok"
+    },
+    "/get_entry_points": {
+      "ms": 83.04,
+      "status": "ok"
+    },
+    "/get_enum_values": {
+      "status": "needs a specific input, not timed"
+    },
+    "/get_external_location": {
+      "ms": 15.61,
+      "status": "ok"
+    },
+    "/get_field_access_context": {
+      "ms": 13.47,
+      "status": "ok"
+    },
+    "/get_function_count": {
+      "ms": 15.02,
+      "status": "ok"
+    },
+    "/get_function_documentation": {
+      "ms": 354.65,
+      "status": "ok"
+    },
+    "/get_function_pcode": {
+      "ms": 364.42,
+      "status": "ok"
+    },
+    "/get_functions": {
+      "ms": 976.07,
+      "status": "ok"
+    },
+    "/get_language_metadata": {
+      "ms": 15.86,
+      "status": "ok"
+    },
+    "/get_metadata": {
+      "ms": 12.77,
+      "status": "ok"
+    },
+    "/get_program_options": {
+      "ms": 1.39,
+      "status": "ok"
+    },
+    "/get_project_info": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/get_property": {
+      "detail": "{\"error\":\"map is required\"}",
+      "ms": 1.02,
+      "status": "error"
+    },
+    "/get_struct_layout": {
+      "status": "needs a specific input, not timed"
+    },
+    "/get_type_size": {
+      "status": "needs a specific input, not timed"
+    },
+    "/get_ui_cursor": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/get_valid_data_types": {
+      "status": "needs a specific input, not timed"
+    },
+    "/get_xrefs_from": {
+      "ms": 15.03,
+      "status": "ok"
+    },
+    "/import_data_types": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/import_file": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/import_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/list_analyzers": {
+      "ms": 15.73,
+      "status": "ok"
+    },
+    "/list_bookmarks": {
+      "ms": 1.27,
+      "status": "ok"
+    },
+    "/list_calling_conventions": {
+      "ms": 14.06,
+      "status": "ok"
+    },
+    "/list_class_members": {
+      "status": "needs a specific input, not timed"
+    },
+    "/list_function_tags": {
+      "ms": 15.32,
+      "status": "ok"
+    },
+    "/list_globals": {
+      "ms": 22.86,
+      "status": "ok"
+    },
+    "/list_open_programs": {
+      "ms": 3.66,
+      "status": "ok"
+    },
+    "/list_program_items": {
+      "status": "needs a specific input, not timed"
+    },
+    "/list_project_files": {
+      "status": "needs a specific input, not timed"
+    },
+    "/list_projects": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/list_properties": {
+      "status": "needs a specific input, not timed"
+    },
+    "/list_scripts": {
+      "ms": 15.93,
+      "status": "ok"
+    },
+    "/list_shadowed_globals": {
+      "ms": 15.6,
+      "status": "ok"
+    },
+    "/mcp/health": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/mcp/schema": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/merge_program_documentation": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/modify_struct_field": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/move_data_type_to_category": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/move_file": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/move_folder": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/open_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/open_project": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/prompt_policy": {
+      "status": "not served by this server"
+    },
+    "/read_memory": {
+      "ms": 1.07,
+      "status": "ok"
+    },
+    "/reanalyze": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/recreate_struct": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/remove_function_tag": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/remove_program_option": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/remove_property": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/remove_reference": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/remove_struct_field": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/rename_data_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/rename_function": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/rename_symbol": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/rename_variables": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/resize_struct": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/resolve_duplicate_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/restore_project": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/run_analysis": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/run_ghidra_script": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/run_script_inline": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/save_all_programs": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/save_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/admin/set_permissions": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/admin/terminate_all_checkouts": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/admin/terminate_checkout": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/admin/users": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/server/authenticate": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/checkouts": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/server/connect": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/disconnect": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/repositories": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/server/repository/create": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/repository/file": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/server/repository/files": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/server/status": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/server/version_control/add": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/version_control/checkout": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/version_control/undo_checkout": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/server/version_history": {
+      "status": "needs live debugger / server / project context, not timed"
+    },
+    "/set_bookmark": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_comment": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_function_no_return": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_function_prototype": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_function_tag_comment": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_function_this_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_global": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_image_base": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_memory_block": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_program_option": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_property": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_variable_storage": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_variable_type": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/set_variables": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/suggest_field_names": {
+      "detail": "{\"error\":\"No structure data type found at 0x18000f650\"}",
+      "ms": 15.56,
+      "status": "error"
+    },
+    "/switch_program": {
+      "status": "write: one DB transaction, not timed"
+    },
+    "/tool/goto_address": {
+      "status": "not served by this server"
+    },
+    "/tool/running_tools": {
+      "status": "not served by this server"
+    },
+    "/validate_data_type": {
+      "status": "needs a specific input, not timed"
+    },
+    "/validate_function_prototype": {
+      "status": "needs a specific input, not timed"
+    }
+  }
+}

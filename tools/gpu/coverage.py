@@ -23,6 +23,9 @@ REPO = Path(__file__).resolve().parents[2]
 CATALOG = REPO / "tests" / "endpoints.json"
 SERVICE = REPO / "src" / "main" / "java" / "com" / "xebyte" / "core" / "GpuService.java"
 OUT = REPO / "docs" / "GPU_COVERAGE.md"
+TIMINGS = REPO / "docs" / "gpu_cpu_only_timings.json"
+# A timed cpu-only tool slower than this must be explained by the decompiler.
+SLOW_MS = 100.0
 
 # Why a category has nothing to offload. Applied to every tool in the category that
 # is not ported; EXPLICIT below overrides per tool.
@@ -49,11 +52,12 @@ CATEGORY_REASON = {
 
 EXPLICIT = {
     "/force_decompile": "Ghidra's decompiler is native C++ run one function per process call; it cannot run on a GPU. "
-                        "Decompile-derived analyses (gpu_dataflow_slice) run their graph work on the GPU.",
+                        "gpu_decompile_batch decompiles many functions on a CPU thread pool and runs the analysis of "
+                        "the results (dominators, loops, dataflow slices) on the backend the caller picks.",
     "/get_functions": "bundles decompiler output (native decompiler, see force_decompile) with indexed reads",
     "/analyze_function_complete": "composite of decompile + indexed reads; its structural part is gpu_control_flow_analysis",
     "/analyze_for_documentation": "composite of decompile + indexed reads",
-    "/get_function_documentation": "reads one function's documentation record",
+    "/get_function_documentation": "documentation record assembled from decompiler output (native, CPU)",
     "/disassemble_function": "Ghidra's SLEIGH disassembler (CPU); output is a listing read",
     "/disassemble_bytes": "Ghidra's SLEIGH disassembler (CPU) on caller-supplied bytes",
     "/run_analysis": "Ghidra's auto-analyzers (Java plug-ins, CPU)",
@@ -114,6 +118,19 @@ def classify() -> list[dict]:
     return rows
 
 
+def timings() -> dict | None:
+    return json.loads(TIMINGS.read_text(encoding="utf-8")) if TIMINGS.exists() else None
+
+
+def measured(t: dict | None, path: str) -> str:
+    v = (t or {}).get("results", {}).get(path)
+    if not v:
+        return ""
+    if v.get("status") == "ok":
+        return f"{v['ms']:.1f} ms"
+    return v["status"].split(",")[0].split(":")[0]
+
+
 def render(rows: list[dict]) -> str:
     gpu = [r for r in rows if r["status"] == "gpu"]
     cpu = [r for r in rows if r["status"] == "cpu-only"]
@@ -136,9 +153,23 @@ def render(rows: list[dict]) -> str:
     lines += ["", "## Not ported: nothing a GPU could compute", "",
               "These tools are database edits, single-record lookups, I/O, lifecycle or UI actions, or",
               "wrap Ghidra's native decompiler / SLEIGH disassembler. Moving them to a GPU would only add",
-              "a host-to-device copy around a lookup.", "", "| Upstream tool | Group | Why |", "| --- | --- | --- |"]
+              "a host-to-device copy around a lookup.", ""]
+    t = timings()
+    if t:
+        ok = sorted(v["ms"] for v in t["results"].values() if v.get("status") == "ok")
+        slow = sorted(p[1:] for p, v in t["results"].items() if v.get("status") == "ok" and v["ms"] > SLOW_MS)
+        lines += [f"Measured, not assumed: every read-only tool below was called on {t['binary']}",
+                  f"(`python -m tools.gpu.measure_cpu_only`, best of 3, wall time including HTTP). "
+                  f"{len(ok)} timed; median **{ok[len(ok) // 2]:.1f} ms** against an HTTP round-trip floor of "
+                  f"{t.get('http_floor_ms', 0):.1f} ms (`/check_connection`), i.e. a median of "
+                  f"**{max(0.0, ok[len(ok) // 2] - t.get('http_floor_ms', 0)):.1f} ms** of actual work -- at or below "
+                  f"the ~1-2 ms a GPU call spends on launch and transfer before computing anything.",
+                  f"Every one slower than {SLOW_MS:.0f} ms runs Ghidra's native decompiler: "
+                  + ", ".join(f"`{s}`" for s in slow) + ".",
+                  "Write tools are single database transactions and were not timed.", ""]
+    lines += ["| Upstream tool | Group | Why | Measured |", "| --- | --- | --- | --- |"]
     for r in sorted(cpu, key=lambda r: (r["category"], r["path"])):
-        lines.append(f"| `{r['path'][1:]}` | {r['category']} | {r['detail']} |")
+        lines.append(f"| `{r['path'][1:]}` | {r['category']} | {r['detail']} | {measured(t, r['path'])} |")
     return "\n".join(lines) + "\n"
 
 

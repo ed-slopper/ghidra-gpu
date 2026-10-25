@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
     category = PluginCategoryNames.COMMON,
     shortDescription = "GhidraMCP - HTTP server plugin",
     description = "GhidraMCP - Starts an embedded HTTP server to expose program data via REST API and MCP bridge. " +
-                  "Provides 227 endpoints for reverse engineering automation. " +
+                  "Provides 228 endpoints for reverse engineering automation. " +
                   "Port configurable via Tool Options. " +
                   "Features: function analysis, decompilation, symbol management, cross-references, label operations, " +
                   "high-performance batch data analysis, field-level structure analysis, advanced call graph analysis, " +
@@ -717,7 +717,7 @@ public class GhidraMCPPlugin extends Plugin implements ApplicationLevelPlugin {
      * <p>Defined once and registered on <em>every</em> running transport. They used to
      * be inlined into the TCP server's setup, so a bridge on the Unix socket — the
      * transport it prefers — could not reach {@code /exit_ghidra}, {@code /tool/*} or
-     * any of the version-control routes: 208 tools over UDS against 240 over TCP,
+     * any of the version-control routes: 209 tools over UDS against 240 over TCP,
      * measured on one instance. {@code ServerManager.registerTool} has always taken a
      * hook for exactly this and was being passed {@code null}.
      *

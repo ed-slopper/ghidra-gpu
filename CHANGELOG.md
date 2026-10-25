@@ -6,7 +6,7 @@ Complete version history for the Ghidra MCP Server project.
 
 ## ghidra-gpu (on v7.0.0) — CUDA acceleration: the `gpu` tool group
 
-**231 tools** — the 209 below plus 22 `gpu_*` tools (227 on the GUI plugin, 212 on the
+**232 tools** — the 209 below plus 23 `gpu_*` tools (228 on the GUI plugin, 213 on the
 headless server, 208 on both).
 
 - **CUDA kernels** (`src/main/cuda/ghidra_gpu.cu`, 22 kernels) compiled to PTX with NVRTC
