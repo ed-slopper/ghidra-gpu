@@ -72,7 +72,7 @@ Through the MCP bridge the group is lazy-loaded like any other:
 | `gpu_find_function_starts` | find_code_gaps, find_next_undefined_function | per-architecture prologue scan outside known functions |
 | `gpu_find_functions` | find_functions | substring over all function (or symbol) names |
 | `gpu_search_instructions` | search_instructions | substring over every instruction's text |
-| `gpu_function_hashes` | get_function_hash, compare_programs_documentation | SHA-256, byte-identical to `get_function_hash`, plus duplicate groups |
+| `gpu_function_hashes` | get_function_hash, compare_programs_documentation | SHA-256 of the normalized (`get_function_hash`) or opcode (`archive_ingest_program`) stream; both byte-identical to upstream on all 2839 kernel32 functions; duplicate groups |
 | `gpu_find_similar_functions` | find_similar_functions(_fuzzy), bulk_fuzzy_match | MinHash Jaccard or cosine, one-vs-all or all-vs-all, cross-program |
 | `gpu_diff_functions` | diff_functions | batched Levenshtein over mnemonic sequences |
 | `gpu_call_graph_analysis` | analyze_call_graph, get_full_call_graph, get_function_call_graph, analyze_api_call_chains | SCC recursion groups, PageRank, reachability, caller/callee depth maps |
@@ -160,9 +160,11 @@ than 8 bytes are `unsupported`, memory outside the windows and image is `bad_rea
 - Ghidra's decompiler — native C++, one function per call. `gpu_decompile_batch` runs it
   on a CPU thread pool and analyses every result on the backend you pick; `gpu_dataflow_slice`
   does the same for one slice. Both report decompile time separately from the analysis.
-- The 178 catalog tools listed in [GPU_COVERAGE.md](GPU_COVERAGE.md), each with a reason and, for
-  read-only ones, a measured time on kernel32.dll (the median is indistinguishable from a no-op HTTP
-  round trip; every one over 100 ms is the decompiler).
+- The 178 catalog tools listed in [GPU_COVERAGE.md](GPU_COVERAGE.md), each with a reason. 114 of them
+  were timed on kernel32.dll (writes as rolled-back dry runs): the median matches a no-op HTTP round
+  trip, and each of the 13 slower than 100 ms has its own measured explanation (mostly the decompiler;
+  also a database-wide rebase and a deliberate sleep). The 64 untimed ones are listed with why
+  (GUI/debugger, Ghidra Server, external effects, or inputs this program lacks).
 
 ## Configuration
 

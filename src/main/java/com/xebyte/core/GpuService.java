@@ -942,11 +942,13 @@ public class GpuService {
     // =====================================================================
 
     @McpTool(path = "/gpu_function_hashes", description = "GPU twin of get_function_hash at program scale: "
-        + "SHA-256 of every function's normalized instructions (byte-identical to get_function_hash's hash), "
-        + "plus groups of identical functions.",
+        + "SHA-256 of every function's normalized instructions (kind=normalized, byte-identical to "
+        + "get_function_hash) or of its opcode/operand-type stream (kind=opcode, byte-identical to the "
+        + "opcode_hash archive_ingest_program computes), plus groups of identical functions.",
         category = "gpu", access = ToolAccess.READ_ONLY)
     public Response gpuFunctionHashes(
             @Param(value = "filter", defaultValue = "", description = "Only functions whose name contains this") String filter,
+            @Param(value = "kind", defaultValue = "normalized", description = "normalized (get_function_hash) | opcode (archive opcode_hash)") String kind,
             @Param(value = "limit", defaultValue = "500", description = "Max hashes listed (duplicate groups are always complete)") int limit,
             @Param(value = "backend", defaultValue = "auto", description = P_BACKEND) String backend,
             @Param(value = "program", defaultValue = "", description = P_PROGRAM) String programName) {
@@ -955,6 +957,8 @@ public class GpuService {
         Program p = pe.program();
         Backend be;
         try { be = Backend.parse(backend); } catch (IllegalArgumentException e) { return Response.err(e.getMessage()); }
+        boolean opcode = "opcode".equalsIgnoreCase(kind);
+        if (!opcode && !"normalized".equalsIgnoreCase(kind)) return Response.err("kind must be normalized or opcode");
         long t0 = System.nanoTime();
         List<Function> fns = new ArrayList<>();
         List<byte[]> texts = new ArrayList<>();
@@ -962,7 +966,7 @@ public class GpuService {
             if (f.isThunk() || f.isExternal()) continue;
             if (filter != null && !filter.isEmpty() && !f.getName().toLowerCase(Locale.ROOT).contains(filter.toLowerCase(Locale.ROOT))) continue;
             fns.add(f);
-            texts.add(ProgramData.normalizedText(p, f));
+            texts.add(opcode ? ProgramData.opcodeText(p, f) : ProgramData.normalizedText(p, f));
         }
         ScanOps.Packed packed = packBytes(texts);
         double extractMs = ms(t0);
@@ -980,7 +984,7 @@ public class GpuService {
         List<Map<String, Object>> dups = new ArrayList<>();
         groups.forEach((h, l) -> { if (l.size() > 1) dups.add(JsonHelper.mapOf("hash", h, "count", l.size(), "functions", l)); });
         dups.sort((a, b) -> Integer.compare((int) b.get("count"), (int) a.get("count")));
-        return Response.ok(JsonHelper.mapOf("functions_hashed", fns.size(), "unique_hashes", groups.size(),
+        return Response.ok(JsonHelper.mapOf("kind", opcode ? "opcode" : "normalized", "functions_hashed", fns.size(), "unique_hashes", groups.size(),
             "duplicate_groups", dups, "hashes", rows, "execution", exec(o, extractMs)));
     }
 

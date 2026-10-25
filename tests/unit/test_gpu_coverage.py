@@ -34,13 +34,13 @@ def test_coverage_doc_is_current():
     assert actual == expected, "docs/GPU_COVERAGE.md is stale: python -m tools.gpu.coverage --write"
 
 
-def test_every_slow_cpu_only_tool_is_explained_by_the_decompiler():
+def test_every_slow_cpu_only_tool_has_its_own_measured_reason():
+    """A tool that measurably takes time must say where the time goes, not inherit a category default."""
     t = coverage.timings()
     assert t is not None, "docs/gpu_cpu_only_timings.json missing: python -m tools.gpu.measure_cpu_only"
-    reasons = {r["path"]: r["detail"] for r in coverage.classify() if r["status"] == "cpu-only"}
     slow = [p for p, v in t["results"].items() if v.get("status") == "ok" and v["ms"] > coverage.SLOW_MS]
-    unexplained = [p for p in slow if "decompil" not in reasons.get(p, "").lower()]
-    assert unexplained == [], f"slow cpu-only tools whose reason is not the decompiler: {unexplained}"
+    unexplained = sorted(p for p in slow if p not in coverage.EXPLICIT)
+    assert unexplained == [], f"slow cpu-only tools with only a category reason: {unexplained}"
 
 
 def test_timings_cover_only_classified_cpu_only_tools():

@@ -68,7 +68,8 @@ EXPLICIT = {
     "/get_function_pcode": "dumps P-code produced by the decompiler (CPU)",
     "/get_language_metadata": "language description read",
     "/merge_program_documentation": "documentation DB writes",
-    "/apply_documentation": "documentation DB writes",
+    "/apply_documentation": "documentation writes in one transaction; for a single function it also scores "
+                            "completeness by default, which decompiles it (native decompiler, CPU)",
     "/get_entry_points": "symbol table read",
     "/get_function_count": "counter read",
     "/list_globals": "indexed symbol read",
@@ -82,10 +83,20 @@ EXPLICIT = {
     "/batch_string_anchor_report": "joins documentation state to string references (indexed DB reads); raw string "
                                    "extraction itself is gpu_list_strings",
     "/archive_ingest_function": "HTTP upload to an external archive service",
-    "/archive_ingest_program": "HTTP upload to an external archive service",
+    "/archive_ingest_program": "walks every function building upload payloads (indexed DB reads) for an external "
+                               "archive service; its one compute step, an opcode SHA-256 per function, is "
+                               "gpu_function_hashes(kind=opcode), byte-identical",
     "/find_data_types": "data type manager name lookup (indexed, small)",
     "/detect_array_bounds": "inspects one address's references and neighbours",
     "/get_assembly_context": "reads a few instructions around one address",
+    "/analyze_struct_field_usage": "decompiles each function referencing the struct (native decompiler, CPU) to map "
+                                   "field offsets; the per-function decompile is the cost",
+    "/get_ui_cursor": "reads the CodeBrowser cursor (GUI state)",
+    "/set_image_base": "rebasing rewrites every address-keyed record in the program database (DB I/O, single "
+                       "transaction); no arithmetic a GPU could take over",
+    "/batch_set_comments": "a handful of comment writes followed by a deliberate 500 ms settle wait "
+                           "(Thread.sleep in CommentService), not computation",
+    "/set_variable_type": "retypes a variable at the decompiler layer: decompiles the function (native decompiler, CPU)",
     "/emulate_function": "single run of Ghidra's EmulatorHelper; batched runs are gpu_emulate_function_batch",
 }
 
@@ -156,17 +167,37 @@ def render(rows: list[dict]) -> str:
               "a host-to-device copy around a lookup.", ""]
     t = timings()
     if t:
-        ok = sorted(v["ms"] for v in t["results"].values() if v.get("status") == "ok")
-        slow = sorted(p[1:] for p, v in t["results"].items() if v.get("status") == "ok" and v["ms"] > SLOW_MS)
-        lines += [f"Measured, not assumed: every read-only tool below was called on {t['binary']}",
-                  f"(`python -m tools.gpu.measure_cpu_only`, best of 3, wall time including HTTP). "
-                  f"{len(ok)} timed; median **{ok[len(ok) // 2]:.1f} ms** against an HTTP round-trip floor of "
-                  f"{t.get('http_floor_ms', 0):.1f} ms (`/check_connection`), i.e. a median of "
-                  f"**{max(0.0, ok[len(ok) // 2] - t.get('http_floor_ms', 0)):.1f} ms** of actual work -- at or below "
-                  f"the ~1-2 ms a GPU call spends on launch and transfer before computing anything.",
-                  f"Every one slower than {SLOW_MS:.0f} ms runs Ghidra's native decompiler: "
-                  + ", ".join(f"`{s}`" for s in slow) + ".",
-                  "Write tools are single database transactions and were not timed.", ""]
+        res = t["results"]
+        ok = {p: v for p, v in res.items() if v.get("status") == "ok"}
+        ms = sorted(v["ms"] for v in ok.values())
+        n_write = sum(1 for v in ok.values() if v.get("dry_run"))
+        floor = t.get("http_floor_ms", 0)
+        untimed = defaultdict(int)
+        for v in res.values():
+            if v.get("status") != "ok":
+                untimed[v["status"]] += 1
+        slow = sorted((p for p, v in ok.items() if v["ms"] > SLOW_MS), key=lambda p: -ok[p]["ms"])
+        lines += [
+            "### What was measured",
+            "",
+            f"`python -m tools.gpu.measure_cpu_only` called these tools on {t['binary']} (best of 3, wall time "
+            f"including HTTP; write tools as `dry_run=true`, i.e. inside a transaction that is rolled back).",
+            "",
+            f"- **{len(ok)} of {len(res)} timed** ({len(ok) - n_write} read-only, {n_write} writes). Median "
+            f"**{ms[len(ms) // 2]:.1f} ms** against a round-trip floor of {floor:.1f} ms for a no-op request "
+            f"(`/check_connection`, measured in the same run).",
+            f"- Every timed tool slower than {SLOW_MS:.0f} ms, and where its time goes (each has its own reason in the table):",
+        ]
+        for p in slow:
+            lines.append(f"  - `{p[1:]}` {ok[p]['ms']:.0f} ms")
+        lines += [f"- **{sum(untimed.values())} not timed**, each named in the table with why:"]
+        for status, n in sorted(untimed.items(), key=lambda kv: -kv[1]):
+            lines.append(f"  - {n}: {status}")
+        lines += ["",
+                  "The untimed tools are classified from what they do (the Why column): GUI-only tools need a "
+                  "CodeBrowser and the debugger ones a live target; Ghidra Server tools need a server; tools that "
+                  "refuse a dry run write files, save, close or talk to a server; the rest needed inputs this "
+                  "program does not have.", ""]
     lines += ["| Upstream tool | Group | Why | Measured |", "| --- | --- | --- | --- |"]
     for r in sorted(cpu, key=lambda r: (r["category"], r["path"])):
         lines.append(f"| `{r['path'][1:]}` | {r['category']} | {r['detail']} | {measured(t, r['path'])} |")

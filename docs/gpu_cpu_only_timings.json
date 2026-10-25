@@ -1,579 +1,735 @@
 {
   "binary": "kernel32.dll (Windows 11, x64, 4301 functions incl. externals, auto-analysed)",
   "function": "FUN_18000f650",
-  "http_floor_ms": 15.63,
+  "http_floor_ms": 15.13,
   "results": {
     "/add_function_tag": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 2.36,
+      "status": "ok"
     },
     "/add_memory_reference": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 13.15,
+      "status": "ok"
     },
     "/add_struct_field": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 10.18,
+      "status": "ok"
     },
     "/analysis_status": {
-      "status": "needs a specific input, not timed"
+      "ms": 15.5,
+      "status": "ok"
     },
     "/analyze_for_documentation": {
-      "ms": 710.02,
+      "ms": 711.02,
       "status": "ok"
     },
     "/analyze_function_complete": {
-      "ms": 347.1,
+      "ms": 348.73,
       "status": "ok"
     },
     "/analyze_function_completeness": {
-      "ms": 364.58,
+      "ms": 357.61,
       "status": "ok"
     },
     "/analyze_global_completeness": {
-      "ms": 2.23,
+      "ms": 0.97,
       "status": "ok"
     },
     "/analyze_struct_field_usage": {
-      "status": "needs a specific input, not timed"
+      "ms": 1457.16,
+      "status": "ok"
     },
     "/apply_data_classification": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 12.85,
+      "status": "ok"
     },
     "/apply_data_type": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.49,
+      "status": "ok"
     },
     "/apply_documentation": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 376.08,
+      "status": "ok"
     },
     "/archive_ingest_function": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 10.17,
+      "status": "ok"
     },
     "/archive_ingest_program": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 421.15,
+      "status": "ok"
     },
     "/archive_project": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/audit_global": {
-      "ms": 0.95,
+      "ms": 1.1,
       "status": "ok"
     },
     "/audit_globals_in_function": {
-      "ms": 14.92,
+      "ms": 2.95,
       "status": "ok"
     },
     "/batch_rename_function_components": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 13.76,
+      "status": "ok"
     },
     "/batch_set_comments": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 518.72,
+      "status": "ok"
     },
     "/batch_string_anchor_report": {
-      "ms": 16.04,
+      "ms": 28.64,
       "status": "ok"
     },
     "/can_rename_at_address": {
-      "ms": 3.76,
+      "ms": 15.31,
       "status": "ok"
     },
     "/check_connection": {
-      "status": "needs live debugger / server / project context, not timed"
+      "ms": 1.17,
+      "status": "ok"
     },
     "/checkin_program": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/clear_flow_and_repair": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.76,
+      "status": "ok"
     },
     "/clear_function_comments": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.74,
+      "status": "ok"
     },
     "/clear_instruction_flow_override": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.84,
+      "status": "ok"
     },
     "/clone_data_type": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 23.54,
+      "status": "ok"
     },
     "/close_program": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/close_project": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/configure_analyzer": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.48,
+      "status": "ok"
     },
     "/convert_number": {
-      "ms": 14.67,
+      "ms": 15.5,
       "status": "ok"
     },
     "/create_data_type_category": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.77,
+      "status": "ok"
     },
     "/create_derived_type": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.9,
+      "status": "ok"
     },
     "/create_enum": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.27,
+      "status": "ok"
     },
     "/create_folder": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/create_function": {
-      "status": "write: one DB transaction, not timed"
+      "detail": "{\"dry_run\":true,\"error\":\"Function already exists at 0x18000f650: FUN_18000f650\"}",
+      "dry_run": true,
+      "ms": 15.59,
+      "status": "error"
     },
     "/create_function_signature": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.55,
+      "status": "ok"
     },
     "/create_label": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 42.77,
+      "status": "ok"
     },
     "/create_memory_block": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 9.38,
+      "status": "ok"
     },
     "/create_project": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/create_property_map": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/create_struct": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/create_union": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/debugger/dynamic_to_static": {
-      "status": "not served by this server"
-    },
-    "/debugger/interrupt": {
-      "status": "not served by this server"
-    },
-    "/debugger/launch": {
-      "status": "not served by this server"
-    },
-    "/debugger/launch_offers": {
-      "status": "not served by this server"
-    },
-    "/debugger/list_breakpoints": {
-      "status": "not served by this server"
-    },
-    "/debugger/modules": {
-      "status": "not served by this server"
-    },
-    "/debugger/read_memory": {
-      "status": "not served by this server"
-    },
-    "/debugger/registers": {
-      "status": "not served by this server"
-    },
-    "/debugger/remove_breakpoint": {
-      "status": "not served by this server"
-    },
-    "/debugger/resume": {
-      "status": "not served by this server"
-    },
-    "/debugger/set_breakpoint": {
-      "status": "not served by this server"
-    },
-    "/debugger/stack_trace": {
-      "status": "not served by this server"
-    },
-    "/debugger/static_to_dynamic": {
-      "status": "not served by this server"
-    },
-    "/debugger/status": {
-      "status": "not served by this server"
-    },
-    "/debugger/step": {
-      "status": "not served by this server"
-    },
-    "/debugger/traces": {
-      "status": "not served by this server"
-    },
-    "/delete_bookmark": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/delete_data_type": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/delete_file": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/delete_function": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/delete_function_tag": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/delete_label": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/delete_project": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/delete_property_map": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/detect_array_bounds": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/disassemble_bytes": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/disassemble_function": {
-      "ms": 15.75,
-      "status": "ok"
-    },
-    "/exit_ghidra": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/export_program": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/find_data_types": {
-      "ms": 14.58,
-      "status": "ok"
-    },
-    "/force_decompile": {
-      "ms": 355.51,
-      "status": "ok"
-    },
-    "/get_address_spaces": {
-      "ms": 5.7,
-      "status": "ok"
-    },
-    "/get_assembly_context": {
-      "status": "needs a specific input, not timed"
-    },
-    "/get_comment": {
-      "ms": 15.86,
-      "status": "ok"
-    },
-    "/get_entry_points": {
-      "ms": 83.04,
-      "status": "ok"
-    },
-    "/get_enum_values": {
-      "status": "needs a specific input, not timed"
-    },
-    "/get_external_location": {
+      "dry_run": true,
       "ms": 15.61,
       "status": "ok"
     },
+    "/create_struct": {
+      "dry_run": true,
+      "ms": 78.7,
+      "status": "ok"
+    },
+    "/create_union": {
+      "dry_run": true,
+      "ms": 14.84,
+      "status": "ok"
+    },
+    "/debugger/dynamic_to_static": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/interrupt": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/launch": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/launch_offers": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/list_breakpoints": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/modules": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/read_memory": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/registers": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/remove_breakpoint": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/resume": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/set_breakpoint": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/stack_trace": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/static_to_dynamic": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/status": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/step": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/debugger/traces": {
+      "status": "not served by this server (GUI-only)"
+    },
+    "/delete_bookmark": {
+      "dry_run": true,
+      "ms": 14.77,
+      "status": "ok"
+    },
+    "/delete_data_type": {
+      "dry_run": true,
+      "ms": 15.28,
+      "status": "ok"
+    },
+    "/delete_file": {
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+    },
+    "/delete_function": {
+      "dry_run": true,
+      "ms": 15.47,
+      "status": "ok"
+    },
+    "/delete_function_tag": {
+      "dry_run": true,
+      "ms": 2.5,
+      "status": "ok"
+    },
+    "/delete_label": {
+      "dry_run": true,
+      "ms": 15.49,
+      "status": "ok"
+    },
+    "/delete_project": {
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+    },
+    "/delete_property_map": {
+      "dry_run": true,
+      "ms": 2.34,
+      "status": "ok"
+    },
+    "/detect_array_bounds": {
+      "dry_run": true,
+      "ms": 5.98,
+      "status": "ok"
+    },
+    "/disassemble_bytes": {
+      "detail": "{\"dry_run\":true,\"error\":\"No undefined bytes found at address (already disassembled or defined data)\"}",
+      "dry_run": true,
+      "ms": 2.77,
+      "status": "error"
+    },
+    "/disassemble_function": {
+      "ms": 15.78,
+      "status": "ok"
+    },
+    "/exit_ghidra": {
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+    },
+    "/export_program": {
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+    },
+    "/find_data_types": {
+      "ms": 8.4,
+      "status": "ok"
+    },
+    "/force_decompile": {
+      "ms": 347.98,
+      "status": "ok"
+    },
+    "/get_address_spaces": {
+      "ms": 15.38,
+      "status": "ok"
+    },
+    "/get_assembly_context": {
+      "ms": 15.0,
+      "status": "ok"
+    },
+    "/get_comment": {
+      "ms": 15.47,
+      "status": "ok"
+    },
+    "/get_entry_points": {
+      "ms": 97.2,
+      "status": "ok"
+    },
+    "/get_enum_values": {
+      "ms": 4.38,
+      "status": "ok"
+    },
+    "/get_external_location": {
+      "ms": 7.36,
+      "status": "ok"
+    },
     "/get_field_access_context": {
-      "ms": 13.47,
+      "ms": 12.67,
       "status": "ok"
     },
     "/get_function_count": {
-      "ms": 15.02,
+      "ms": 15.35,
       "status": "ok"
     },
     "/get_function_documentation": {
-      "ms": 354.65,
+      "ms": 349.33,
       "status": "ok"
     },
     "/get_function_pcode": {
-      "ms": 364.42,
+      "ms": 375.03,
       "status": "ok"
     },
     "/get_functions": {
-      "ms": 976.07,
+      "ms": 964.66,
       "status": "ok"
     },
     "/get_language_metadata": {
-      "ms": 15.86,
+      "ms": 13.68,
       "status": "ok"
     },
     "/get_metadata": {
-      "ms": 12.77,
+      "ms": 11.1,
       "status": "ok"
     },
     "/get_program_options": {
-      "ms": 1.39,
+      "ms": 15.7,
       "status": "ok"
     },
     "/get_project_info": {
-      "status": "needs live debugger / server / project context, not timed"
+      "ms": 15.57,
+      "status": "ok"
     },
     "/get_property": {
-      "detail": "{\"error\":\"map is required\"}",
-      "ms": 1.02,
-      "status": "error"
+      "ms": 15.28,
+      "status": "ok"
     },
     "/get_struct_layout": {
-      "status": "needs a specific input, not timed"
+      "ms": 15.55,
+      "status": "ok"
     },
     "/get_type_size": {
-      "status": "needs a specific input, not timed"
+      "ms": 15.34,
+      "status": "ok"
     },
     "/get_ui_cursor": {
-      "status": "needs live debugger / server / project context, not timed"
+      "detail": "{\"error\":\"Headless mode has no GUI cursor\"}",
+      "ms": 15.33,
+      "status": "error"
     },
     "/get_valid_data_types": {
-      "status": "needs a specific input, not timed"
+      "ms": 1.32,
+      "status": "ok"
     },
     "/get_xrefs_from": {
-      "ms": 15.03,
+      "ms": 15.5,
       "status": "ok"
     },
     "/import_data_types": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.28,
+      "status": "ok"
     },
     "/import_file": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/import_program": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/list_analyzers": {
-      "ms": 15.73,
+      "ms": 15.08,
       "status": "ok"
     },
     "/list_bookmarks": {
-      "ms": 1.27,
+      "ms": 14.82,
       "status": "ok"
     },
     "/list_calling_conventions": {
-      "ms": 14.06,
+      "ms": 15.46,
       "status": "ok"
     },
     "/list_class_members": {
-      "status": "needs a specific input, not timed"
+      "ms": 22.6,
+      "status": "ok"
     },
     "/list_function_tags": {
-      "ms": 15.32,
+      "ms": 15.18,
       "status": "ok"
     },
     "/list_globals": {
-      "ms": 22.86,
+      "ms": 21.05,
       "status": "ok"
     },
     "/list_open_programs": {
-      "ms": 3.66,
+      "ms": 12.36,
       "status": "ok"
     },
     "/list_program_items": {
-      "status": "needs a specific input, not timed"
+      "ms": 52.39,
+      "status": "ok"
     },
     "/list_project_files": {
-      "status": "needs a specific input, not timed"
+      "ms": 15.65,
+      "status": "ok"
     },
     "/list_projects": {
-      "status": "needs live debugger / server / project context, not timed"
+      "ms": 15.05,
+      "status": "ok"
     },
     "/list_properties": {
-      "status": "needs a specific input, not timed"
+      "ms": 2.15,
+      "status": "ok"
     },
     "/list_scripts": {
-      "ms": 15.93,
+      "ms": 15.54,
       "status": "ok"
     },
     "/list_shadowed_globals": {
-      "ms": 15.6,
+      "ms": 8.42,
       "status": "ok"
     },
     "/mcp/health": {
-      "status": "needs live debugger / server / project context, not timed"
+      "ms": 7.05,
+      "status": "ok"
     },
     "/mcp/schema": {
-      "status": "needs live debugger / server / project context, not timed"
+      "ms": 16.25,
+      "status": "ok"
     },
     "/merge_program_documentation": {
-      "status": "write: one DB transaction, not timed"
+      "detail": "{\"dry_run\":true,\"error\":\"source and target must differ\"}",
+      "dry_run": true,
+      "ms": 14.02,
+      "status": "error"
     },
     "/modify_struct_field": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.37,
+      "status": "ok"
     },
     "/move_data_type_to_category": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.41,
+      "status": "ok"
     },
     "/move_file": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/move_folder": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/open_program": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/open_project": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/prompt_policy": {
-      "status": "not served by this server"
+      "status": "not served by this server (GUI-only)"
     },
     "/read_memory": {
-      "ms": 1.07,
+      "ms": 15.67,
       "status": "ok"
     },
     "/reanalyze": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/recreate_struct": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 78.36,
+      "status": "ok"
     },
     "/remove_function_tag": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.98,
+      "status": "ok"
     },
     "/remove_program_option": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.67,
+      "status": "ok"
     },
     "/remove_property": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.1,
+      "status": "ok"
     },
     "/remove_reference": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.37,
+      "status": "ok"
     },
     "/remove_struct_field": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.58,
+      "status": "ok"
     },
     "/rename_data_type": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 16.09,
+      "status": "ok"
     },
     "/rename_function": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 26.27,
+      "status": "ok"
     },
     "/rename_symbol": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 27.34,
+      "status": "ok"
     },
     "/rename_variables": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 13.91,
+      "status": "ok"
     },
     "/resize_struct": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 21.23,
+      "status": "ok"
     },
     "/resolve_duplicate_type": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.89,
+      "status": "ok"
     },
     "/restore_project": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/run_analysis": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/run_ghidra_script": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/run_script_inline": {
-      "status": "write: one DB transaction, not timed"
+      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
     },
     "/save_all_programs": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 11.0,
+      "status": "ok"
     },
     "/save_program": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.6,
+      "status": "ok"
     },
     "/server/admin/set_permissions": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/admin/terminate_all_checkouts": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/admin/terminate_checkout": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/admin/users": {
-      "status": "needs live debugger / server / project context, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/authenticate": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/checkouts": {
-      "status": "needs live debugger / server / project context, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/connect": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/disconnect": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/repositories": {
-      "status": "needs live debugger / server / project context, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/repository/create": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/repository/file": {
-      "status": "needs live debugger / server / project context, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/repository/files": {
-      "status": "needs live debugger / server / project context, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/status": {
-      "status": "needs live debugger / server / project context, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/version_control/add": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/version_control/checkout": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/version_control/undo_checkout": {
-      "status": "write: one DB transaction, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/server/version_history": {
-      "status": "needs live debugger / server / project context, not timed"
+      "status": "needs a Ghidra Server / live debug target, not timed"
     },
     "/set_bookmark": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.49,
+      "status": "ok"
     },
     "/set_comment": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 13.91,
+      "status": "ok"
     },
     "/set_function_no_return": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 14.56,
+      "status": "ok"
     },
     "/set_function_prototype": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 15.93,
+      "status": "ok"
     },
     "/set_function_tag_comment": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 11.27,
+      "status": "ok"
     },
     "/set_function_this_type": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_global": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_image_base": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_memory_block": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_program_option": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_property": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_variable_storage": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_variable_type": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/set_variables": {
-      "status": "write: one DB transaction, not timed"
-    },
-    "/suggest_field_names": {
-      "detail": "{\"error\":\"No structure data type found at 0x18000f650\"}",
-      "ms": 15.56,
+      "detail": "{\"dry_run\":true,\"error\":\"FUN_18000f650 has no implicit 'this' parameter (calling convention '__fastcall'). Set it to __thiscall with set_function_prototype, the",
+      "dry_run": true,
+      "ms": 15.28,
       "status": "error"
     },
+    "/set_global": {
+      "dry_run": true,
+      "ms": 2.93,
+      "status": "ok"
+    },
+    "/set_image_base": {
+      "dry_run": true,
+      "ms": 26276.78,
+      "status": "ok"
+    },
+    "/set_memory_block": {
+      "dry_run": true,
+      "ms": 9.26,
+      "status": "ok"
+    },
+    "/set_program_option": {
+      "dry_run": true,
+      "ms": 12.31,
+      "status": "ok"
+    },
+    "/set_property": {
+      "dry_run": true,
+      "ms": 7.27,
+      "status": "ok"
+    },
+    "/set_variable_storage": {
+      "detail": "{\"dry_run\":true,\"error\":\"Variable 'x' not found in function FUN_18000f650\"}",
+      "dry_run": true,
+      "ms": 6.72,
+      "status": "error"
+    },
+    "/set_variable_type": {
+      "dry_run": true,
+      "ms": 466.35,
+      "status": "ok"
+    },
+    "/set_variables": {
+      "detail": "{\"error\":\"Program not found: x Available programs: kernel32.dll\"}",
+      "dry_run": true,
+      "ms": 1.69,
+      "status": "error"
+    },
+    "/suggest_field_names": {
+      "ms": 2.92,
+      "status": "ok"
+    },
     "/switch_program": {
-      "status": "write: one DB transaction, not timed"
+      "dry_run": true,
+      "ms": 1.56,
+      "status": "ok"
     },
     "/tool/goto_address": {
-      "status": "not served by this server"
+      "status": "not served by this server (GUI-only)"
     },
     "/tool/running_tools": {
-      "status": "not served by this server"
+      "status": "not served by this server (GUI-only)"
     },
     "/validate_data_type": {
-      "status": "needs a specific input, not timed"
+      "ms": 1.66,
+      "status": "ok"
     },
     "/validate_function_prototype": {
-      "status": "needs a specific input, not timed"
+      "ms": 1.66,
+      "status": "ok"
     }
   }
 }

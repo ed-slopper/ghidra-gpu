@@ -2194,6 +2194,7 @@
       "category": "gpu",
       "params": [
         "filter",
+        "kind",
         "limit",
         "backend",
         "program"

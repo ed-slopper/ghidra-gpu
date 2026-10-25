@@ -255,6 +255,24 @@ public final class ProgramData {
         return normalized.toString().getBytes(StandardCharsets.UTF_8);
     }
 
+    /**
+     * The text {@code archive_ingest_program} hashes per function, reproduced exactly from
+     * {@code DocumentationHashService.computeOpcodeHash}: mnemonic, then {@code |operandType}
+     * per operand, then {@code ;}.
+     */
+    public static byte[] opcodeText(Program program, Function fn) {
+        StringBuilder sb = new StringBuilder();
+        InstructionIterator it = program.getListing().getInstructions(fn.getBody(), true);
+        while (it.hasNext()) {
+            Instruction inst = it.next();
+            sb.append(inst.getMnemonicString());
+            int n = inst.getNumOperands();
+            for (int i = 0; i < n; i++) sb.append('|').append(inst.getOperandType(i));
+            sb.append(';');
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
     /** Each instruction rendered as "MNEMONIC operands" (what search_instructions matches). */
     public record InstructionText(List<Address> addresses, List<String> text, ScanOps.Packed packed) {}
 
