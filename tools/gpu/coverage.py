@@ -206,9 +206,12 @@ def render(rows: list[dict]) -> str:
         ]
         for p in slow:
             lines.append(f"  - `{p[1:]}` {ok[p]['ms']:.0f} ms")
-        lines += [f"- **{sum(untimed.values())} not timed**, each named in the table with why:"]
-        for status, n in sorted(untimed.items(), key=lambda kv: -kv[1]):
-            lines.append(f"  - {n}: {status}")
+        if untimed:
+            lines += [f"- **{sum(untimed.values())} not timed**, each named in the table with why:"]
+            for status, n in sorted(untimed.items(), key=lambda kv: -kv[1]):
+                lines.append(f"  - {n}: {status}")
+        else:
+            lines += ["- **Every one of them was timed.**"]
         lines += ["",
                   "How the hard ones were reached: GUI-only tools in a real Ghidra GUI started with an isolated "
                   "settings directory (`-Dapplication.settingsdir`, no access to the user's projects); debugger tools "

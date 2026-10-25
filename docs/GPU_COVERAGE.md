@@ -80,7 +80,7 @@ a host-to-device copy around a lookup.
   - `checkin_program` 216 ms
   - `debugger/remove_breakpoint` 206 ms
   - `import_program` 129 ms
-- **0 not timed**, each named in the table with why:
+- **Every one of them was timed.**
 
 How the hard ones were reached: GUI-only tools in a real Ghidra GUI started with an isolated settings directory (`-Dapplication.settingsdir`, no access to the user's projects); debugger tools against a live dbgeng trace of a launched `whoami.exe`; Ghidra Server tools against a scratch server bound to 127.0.0.1 (`python -m tools.gpu.measure_live`); tools that refuse a dry run (save, export, import, archive, project lifecycle, scripts, analysis) for real on a throwaway project. Rows marked `live` in docs/gpu_cpu_only_timings.json say which.
 
