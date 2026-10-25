@@ -1,7 +1,21 @@
 {
   "binary": "kernel32.dll (Windows 11, x64, 4301 functions incl. externals, auto-analysed)",
   "function": "FUN_18000f650",
-  "http_floor_ms": 15.13,
+  "http_floor_ms": 0.77,
+  "http_floor_runs_ms": [
+    0.53,
+    0.67,
+    0.77,
+    0.78,
+    1.22,
+    1.46,
+    12.95,
+    15.1,
+    15.13,
+    15.23,
+    15.29,
+    15.63
+  ],
   "results": {
     "/add_function_tag": {
       "dry_run": true,
@@ -68,7 +82,9 @@
       "status": "ok"
     },
     "/archive_project": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 2052.01,
+      "status": "ok"
     },
     "/audit_global": {
       "ms": 1.1,
@@ -101,7 +117,9 @@
       "status": "ok"
     },
     "/checkin_program": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 215.75,
+      "status": "ok"
     },
     "/clear_flow_and_repair": {
       "dry_run": true,
@@ -124,10 +142,14 @@
       "status": "ok"
     },
     "/close_program": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 16.84,
+      "status": "ok"
     },
     "/close_project": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 10.5,
+      "status": "ok"
     },
     "/configure_analyzer": {
       "dry_run": true,
@@ -154,17 +176,18 @@
       "status": "ok"
     },
     "/create_folder": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 15.65,
+      "status": "ok"
     },
     "/create_function": {
-      "detail": "{\"dry_run\":true,\"error\":\"Function already exists at 0x18000f650: FUN_18000f650\"}",
       "dry_run": true,
-      "ms": 15.59,
-      "status": "error"
+      "ms": 16.36,
+      "status": "ok"
     },
     "/create_function_signature": {
       "dry_run": true,
-      "ms": 14.55,
+      "ms": 6.74,
       "status": "ok"
     },
     "/create_label": {
@@ -178,7 +201,9 @@
       "status": "ok"
     },
     "/create_project": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 63.56,
+      "status": "ok"
     },
     "/create_property_map": {
       "dry_run": true,
@@ -196,52 +221,77 @@
       "status": "ok"
     },
     "/debugger/dynamic_to_static": {
-      "status": "not served by this server (GUI-only)"
+      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
+      "ms": 14.76,
+      "status": "ok"
     },
     "/debugger/interrupt": {
-      "status": "not served by this server (GUI-only)"
+      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
+      "ms": 1.73,
+      "status": "ok"
     },
     "/debugger/launch": {
-      "status": "not served by this server (GUI-only)"
+      "live": "throwaway GUI instance",
+      "ms": 6786.19,
+      "status": "ok"
     },
     "/debugger/launch_offers": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 10.37,
+      "status": "ok"
     },
     "/debugger/list_breakpoints": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 0.86,
+      "status": "ok"
     },
     "/debugger/modules": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 15.02,
+      "status": "ok"
     },
     "/debugger/read_memory": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 1.11,
+      "status": "ok"
     },
     "/debugger/registers": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 15.65,
+      "status": "ok"
     },
     "/debugger/remove_breakpoint": {
-      "status": "not served by this server (GUI-only)"
+      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
+      "ms": 205.7,
+      "status": "ok"
     },
     "/debugger/resume": {
-      "status": "not served by this server (GUI-only)"
+      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
+      "ms": 17.29,
+      "status": "ok"
     },
     "/debugger/set_breakpoint": {
-      "status": "not served by this server (GUI-only)"
+      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
+      "ms": 47.61,
+      "status": "ok"
     },
     "/debugger/stack_trace": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 15.15,
+      "status": "ok"
     },
     "/debugger/static_to_dynamic": {
-      "status": "not served by this server (GUI-only)"
+      "detail": "{\"error\":\"No mapping found for 0x18000f650. Ensure modules are loaded and mapped in the debugger.\"}",
+      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
+      "ms": 10200.07,
+      "status": "error"
     },
     "/debugger/status": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 14.07,
+      "status": "ok"
     },
     "/debugger/step": {
-      "status": "not served by this server (GUI-only)"
+      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
+      "ms": 12.98,
+      "status": "ok"
     },
     "/debugger/traces": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 15.37,
+      "status": "ok"
     },
     "/delete_bookmark": {
       "dry_run": true,
@@ -254,7 +304,9 @@
       "status": "ok"
     },
     "/delete_file": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 21.23,
+      "status": "ok"
     },
     "/delete_function": {
       "dry_run": true,
@@ -272,7 +324,9 @@
       "status": "ok"
     },
     "/delete_project": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 6.26,
+      "status": "ok"
     },
     "/delete_property_map": {
       "dry_run": true,
@@ -285,20 +339,23 @@
       "status": "ok"
     },
     "/disassemble_bytes": {
-      "detail": "{\"dry_run\":true,\"error\":\"No undefined bytes found at address (already disassembled or defined data)\"}",
       "dry_run": true,
-      "ms": 2.77,
-      "status": "error"
+      "ms": 39.27,
+      "status": "ok"
     },
     "/disassemble_function": {
       "ms": 15.78,
       "status": "ok"
     },
     "/exit_ghidra": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "throwaway GUI instance (closed by this call)",
+      "ms": 34.29,
+      "status": "ok"
     },
     "/export_program": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 723.87,
+      "status": "ok"
     },
     "/find_data_types": {
       "ms": 8.4,
@@ -381,9 +438,8 @@
       "status": "ok"
     },
     "/get_ui_cursor": {
-      "detail": "{\"error\":\"Headless mode has no GUI cursor\"}",
-      "ms": 15.33,
-      "status": "error"
+      "ms": 14.84,
+      "status": "ok"
     },
     "/get_valid_data_types": {
       "ms": 1.32,
@@ -399,10 +455,14 @@
       "status": "ok"
     },
     "/import_file": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 863.81,
+      "status": "ok"
     },
     "/import_program": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 129.18,
+      "status": "ok"
     },
     "/list_analyzers": {
       "ms": 15.08,
@@ -465,10 +525,9 @@
       "status": "ok"
     },
     "/merge_program_documentation": {
-      "detail": "{\"dry_run\":true,\"error\":\"source and target must differ\"}",
       "dry_run": true,
-      "ms": 14.02,
-      "status": "error"
+      "ms": 14.69,
+      "status": "ok"
     },
     "/modify_struct_field": {
       "dry_run": true,
@@ -481,26 +540,38 @@
       "status": "ok"
     },
     "/move_file": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 28.21,
+      "status": "ok"
     },
     "/move_folder": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 17.11,
+      "status": "ok"
     },
     "/open_program": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 38.01,
+      "status": "ok"
     },
     "/open_project": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 26.16,
+      "status": "ok"
     },
     "/prompt_policy": {
-      "status": "not served by this server (GUI-only)"
+      "live": "throwaway GUI instance",
+      "ms": 2.12,
+      "status": "ok"
     },
     "/read_memory": {
       "ms": 15.67,
       "status": "ok"
     },
     "/reanalyze": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 25357.78,
+      "status": "ok"
     },
     "/recreate_struct": {
       "dry_run": true,
@@ -563,77 +634,119 @@
       "status": "ok"
     },
     "/restore_project": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 869.67,
+      "status": "ok"
     },
     "/run_analysis": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "real effect on a throwaway project",
+      "ms": 22056.94,
+      "status": "ok"
     },
     "/run_ghidra_script": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "throwaway GUI instance, scripts enabled",
+      "ms": 3230.48,
+      "status": "ok"
     },
     "/run_script_inline": {
-      "status": "external effect (refuses dry_run: files, save, close, server), not timed"
+      "live": "throwaway GUI instance, scripts enabled",
+      "ms": 647.34,
+      "status": "ok"
     },
     "/save_all_programs": {
-      "dry_run": true,
-      "ms": 11.0,
+      "live": "real effect on a throwaway project",
+      "ms": 15.69,
       "status": "ok"
     },
     "/save_program": {
-      "dry_run": true,
-      "ms": 15.6,
+      "live": "real effect on a throwaway project",
+      "ms": 16.53,
       "status": "ok"
     },
     "/server/admin/set_permissions": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 43.95,
+      "status": "ok"
     },
     "/server/admin/terminate_all_checkouts": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100, shared project",
+      "ms": 12.47,
+      "status": "ok"
     },
     "/server/admin/terminate_checkout": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100, shared project",
+      "ms": 1.48,
+      "status": "ok"
     },
     "/server/admin/users": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 15.75,
+      "status": "ok"
     },
     "/server/authenticate": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 16.03,
+      "status": "ok"
     },
     "/server/checkouts": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 3.18,
+      "status": "ok"
     },
     "/server/connect": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 68.34,
+      "status": "ok"
     },
     "/server/disconnect": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 15.76,
+      "status": "ok"
     },
     "/server/repositories": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 15.55,
+      "status": "ok"
     },
     "/server/repository/create": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100, shared project",
+      "ms": 18.42,
+      "status": "ok"
     },
     "/server/repository/file": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 1.62,
+      "status": "ok"
     },
     "/server/repository/files": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 31.89,
+      "status": "ok"
     },
     "/server/status": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 20.33,
+      "status": "ok"
     },
     "/server/version_control/add": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 61.6,
+      "status": "ok"
     },
     "/server/version_control/checkout": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 82.21,
+      "status": "ok"
     },
     "/server/version_control/undo_checkout": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 27.01,
+      "status": "ok"
     },
     "/server/version_history": {
-      "status": "needs a Ghidra Server / live debug target, not timed"
+      "live": "scratch Ghidra Server on 127.0.0.1:13100",
+      "ms": 17.5,
+      "status": "ok"
     },
     "/set_bookmark": {
       "dry_run": true,
@@ -661,10 +774,9 @@
       "status": "ok"
     },
     "/set_function_this_type": {
-      "detail": "{\"dry_run\":true,\"error\":\"FUN_18000f650 has no implicit 'this' parameter (calling convention '__fastcall'). Set it to __thiscall with set_function_prototype, the",
       "dry_run": true,
-      "ms": 15.28,
-      "status": "error"
+      "ms": 26.88,
+      "status": "ok"
     },
     "/set_global": {
       "dry_run": true,
@@ -692,10 +804,9 @@
       "status": "ok"
     },
     "/set_variable_storage": {
-      "detail": "{\"dry_run\":true,\"error\":\"Variable 'x' not found in function FUN_18000f650\"}",
       "dry_run": true,
-      "ms": 6.72,
-      "status": "error"
+      "ms": 13.55,
+      "status": "ok"
     },
     "/set_variable_type": {
       "dry_run": true,
@@ -703,10 +814,9 @@
       "status": "ok"
     },
     "/set_variables": {
-      "detail": "{\"error\":\"Program not found: x Available programs: kernel32.dll\"}",
       "dry_run": true,
-      "ms": 1.69,
-      "status": "error"
+      "ms": 361.75,
+      "status": "ok"
     },
     "/suggest_field_names": {
       "ms": 2.92,
@@ -718,10 +828,13 @@
       "status": "ok"
     },
     "/tool/goto_address": {
-      "status": "not served by this server (GUI-only)"
+      "live": "throwaway GUI instance",
+      "ms": 4.1,
+      "status": "ok"
     },
     "/tool/running_tools": {
-      "status": "not served by this server (GUI-only)"
+      "ms": 15.54,
+      "status": "ok"
     },
     "/validate_data_type": {
       "ms": 1.66,

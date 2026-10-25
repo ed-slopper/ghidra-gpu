@@ -52,28 +52,38 @@ a host-to-device copy around a lookup.
 
 `python -m tools.gpu.measure_cpu_only` called these tools on kernel32.dll (Windows 11, x64, 4301 functions incl. externals, auto-analysed) (best of 3, wall time including HTTP; write tools as `dry_run=true`, i.e. inside a transaction that is rolled back).
 
-- **114 of 178 timed** (54 read-only, 60 writes). Median **15.3 ms** against a round-trip floor of 15.1 ms for a no-op request (`/check_connection`, measured in the same run).
+- **177 of 178 timed** (113 read-only, 64 writes). Median **15.5 ms**. A no-op request (`/check_connection`) took between 0.5 and 15.6 ms across the measurement runs (Windows loopback HTTP), so the many 1-20 ms rows are mostly request overhead around a lookup or a single transaction.
 - Every timed tool slower than 100 ms, and where its time goes (each has its own reason in the table):
   - `set_image_base` 26277 ms
+  - `reanalyze` 25358 ms
+  - `run_analysis` 22057 ms
+  - `debugger/launch` 6786 ms
+  - `run_ghidra_script` 3230 ms
+  - `archive_project` 2052 ms
   - `analyze_struct_field_usage` 1457 ms
   - `get_functions` 965 ms
+  - `restore_project` 870 ms
+  - `import_file` 864 ms
+  - `export_program` 724 ms
   - `analyze_for_documentation` 711 ms
+  - `run_script_inline` 647 ms
   - `batch_set_comments` 519 ms
   - `set_variable_type` 466 ms
   - `archive_ingest_program` 421 ms
   - `apply_documentation` 376 ms
   - `get_function_pcode` 375 ms
+  - `set_variables` 362 ms
   - `analyze_function_completeness` 358 ms
   - `get_function_documentation` 349 ms
   - `analyze_function_complete` 349 ms
   - `force_decompile` 348 ms
-- **64 not timed**, each named in the table with why:
-  - 20: external effect (refuses dry_run: files, save, close, server), not timed
-  - 19: not served by this server (GUI-only)
-  - 18: needs a Ghidra Server / live debug target, not timed
-  - 7: error
+  - `checkin_program` 216 ms
+  - `debugger/remove_breakpoint` 206 ms
+  - `import_program` 129 ms
+- **1 not timed**, each named in the table with why:
+  - 1: error
 
-The untimed tools are classified from what they do (the Why column): GUI-only tools need a CodeBrowser and the debugger ones a live target; Ghidra Server tools need a server; tools that refuse a dry run write files, save, close or talk to a server; the rest needed inputs this program does not have.
+How the hard ones were reached: GUI-only tools in a real Ghidra GUI started with an isolated settings directory (`-Dapplication.settingsdir`, no access to the user's projects); debugger tools against a live dbgeng trace of a launched `whoami.exe`; Ghidra Server tools against a scratch server bound to 127.0.0.1 (`python -m tools.gpu.measure_live`); tools that refuse a dry run (save, export, import, archive, project lifecycle, scripts, analysis) for real on a throwaway project. Rows marked `live` in docs/gpu_cpu_only_timings.json say which.
 
 | Upstream tool | Group | Why | Measured |
 | --- | --- | --- | --- |
@@ -86,7 +96,7 @@ The untimed tools are classified from what they do (the Why column): GUI-only to
 | `get_field_access_context` | analysis | Ghidra-internal analysis control or single-item reads | 12.7 ms |
 | `get_function_pcode` | analysis | dumps P-code produced by the decompiler (CPU) | 375.0 ms |
 | `list_analyzers` | analysis | Ghidra-internal analysis control or single-item reads | 15.1 ms |
-| `run_analysis` | analysis | Ghidra's auto-analyzers (Java plug-ins, CPU) | external effect (refuses dry_run |
+| `run_analysis` | analysis | Ghidra's auto-analyzers; measured on kernel32: of 22 s, 14.3 s is the native decompiler (Parameter ID 8.4 s, Switch Analysis 5.9 s), 3.6 s the x86 constant-propagation analyzer (a per-function symbolic interpreter writing references into the DB); the rest is many sub-second DB passes. Its function-start search is the part gpu_find_function_starts runs on the GPU | 22056.9 ms |
 | `batch_set_comments` | comment | a handful of comment writes followed by a deliberate 500 ms settle wait (Thread.sleep in CommentService), not computation | 518.7 ms |
 | `clear_function_comments` | comment | database write/read of one comment; no bulk computation | 15.7 ms |
 | `get_comment` | comment | database write/read of one comment; no bulk computation | 15.5 ms |
@@ -102,7 +112,7 @@ The untimed tools are classified from what they do (the Why column): GUI-only to
 | `create_data_type_category` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 15.8 ms |
 | `create_derived_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 14.9 ms |
 | `create_enum` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 14.3 ms |
-| `create_function_signature` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 14.6 ms |
+| `create_function_signature` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 6.7 ms |
 | `create_struct` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 78.7 ms |
 | `create_union` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 14.8 ms |
 | `delete_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 15.3 ms |
@@ -123,35 +133,35 @@ The untimed tools are classified from what they do (the Why column): GUI-only to
 | `suggest_field_names` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 2.9 ms |
 | `validate_data_type` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 1.7 ms |
 | `validate_function_prototype` | datatype | data type manager edits and single-type lookups (DB transactions in the JVM) | 1.7 ms |
-| `debugger/dynamic_to_static` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/interrupt` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/launch` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/launch_offers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/list_breakpoints` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/modules` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/read_memory` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/registers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/remove_breakpoint` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/resume` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/set_breakpoint` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/stack_trace` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/static_to_dynamic` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/status` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/step` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
-| `debugger/traces` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | not served by this server (GUI-only) |
+| `debugger/dynamic_to_static` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 14.8 ms |
+| `debugger/interrupt` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 1.7 ms |
+| `debugger/launch` | debugger | spawns the target and the Python debugger agent, then waits for its Trace RMI connection | 6786.2 ms |
+| `debugger/launch_offers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 10.4 ms |
+| `debugger/list_breakpoints` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 0.9 ms |
+| `debugger/modules` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 15.0 ms |
+| `debugger/read_memory` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 1.1 ms |
+| `debugger/registers` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 15.7 ms |
+| `debugger/remove_breakpoint` | debugger | one Trace RMI round trip to the debugger agent process (dbgeng); latency, not compute | 205.7 ms |
+| `debugger/resume` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 17.3 ms |
+| `debugger/set_breakpoint` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 47.6 ms |
+| `debugger/stack_trace` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 15.2 ms |
+| `debugger/static_to_dynamic` | debugger | waits (up to 10 s) for the trace's static module mapping; a lookup, not compute | error |
+| `debugger/status` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 14.1 ms |
+| `debugger/step` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 13.0 ms |
+| `debugger/traces` | debugger | live debugger control (TraceRmi); latency-bound, not compute-bound | 15.4 ms |
 | `archive_ingest_function` | documentation | HTTP upload to an external archive service | 10.2 ms |
 | `archive_ingest_program` | documentation | walks every function building upload payloads (indexed DB reads) for an external archive service; its one compute step, an opcode SHA-256 per function, is gpu_function_hashes(kind=opcode), byte-identical | 421.1 ms |
 | `batch_string_anchor_report` | documentation | joins documentation state to string references (indexed DB reads); raw string extraction itself is gpu_list_strings | 28.6 ms |
 | `get_function_documentation` | documentation | documentation record assembled from decompiler output (native, CPU) | 349.3 ms |
-| `merge_program_documentation` | documentation | documentation DB writes | error |
+| `merge_program_documentation` | documentation | documentation DB writes | 14.7 ms |
 | `add_function_tag` | function | function database edits or single-function reads | 2.4 ms |
 | `batch_rename_function_components` | function | function database edits or single-function reads | 13.8 ms |
 | `clear_flow_and_repair` | function | function database edits or single-function reads | 15.8 ms |
 | `clear_instruction_flow_override` | function | function database edits or single-function reads | 14.8 ms |
-| `create_function` | function | function database edits or single-function reads | error |
+| `create_function` | function | function database edits or single-function reads | 16.4 ms |
 | `delete_function` | function | function database edits or single-function reads | 15.5 ms |
 | `delete_function_tag` | function | function database edits or single-function reads | 2.5 ms |
-| `disassemble_bytes` | function | Ghidra's SLEIGH disassembler (CPU) on caller-supplied bytes | error |
+| `disassemble_bytes` | function | Ghidra's SLEIGH disassembler (CPU) on caller-supplied bytes | 39.3 ms |
 | `disassemble_function` | function | Ghidra's SLEIGH disassembler (CPU); output is a listing read | 15.8 ms |
 | `force_decompile` | function | Ghidra's decompiler is native C++ run one function per process call; it cannot run on a GPU. gpu_decompile_batch decompiles many functions on a CPU thread pool and runs the analysis of the results (dominators, loops, dataflow slices) on the backend the caller picks. | 348.0 ms |
 | `get_functions` | function | bundles decompiler output (native decompiler, see force_decompile) with indexed reads | 964.7 ms |
@@ -163,14 +173,14 @@ The untimed tools are classified from what they do (the Why column): GUI-only to
 | `set_function_no_return` | function | function database edits or single-function reads | 14.6 ms |
 | `set_function_prototype` | function | function database edits or single-function reads | 15.9 ms |
 | `set_function_tag_comment` | function | function database edits or single-function reads | 11.3 ms |
-| `set_function_this_type` | function | function database edits or single-function reads | error |
-| `set_variable_storage` | function | function database edits or single-function reads | error |
+| `set_function_this_type` | function | function database edits or single-function reads | 26.9 ms |
+| `set_variable_storage` | function | function database edits or single-function reads | 13.6 ms |
 | `set_variable_type` | function | retypes a variable at the decompiler layer: decompiles the function (native decompiler, CPU) | 466.4 ms |
-| `set_variables` | function | function database edits or single-function reads | error |
-| `get_ui_cursor` | getter | reads the CodeBrowser cursor (GUI state) | error |
-| `close_project` | headless | headless project lifecycle | external effect (refuses dry_run |
-| `create_project` | headless | headless project lifecycle | external effect (refuses dry_run |
-| `open_project` | headless | headless project lifecycle | external effect (refuses dry_run |
+| `set_variables` | function | retypes/renames variables in one transaction; decompiles the function for fresh SSA variables (native decompiler, CPU) | 361.8 ms |
+| `get_ui_cursor` | getter | reads the CodeBrowser cursor (GUI state) | 14.8 ms |
+| `close_project` | headless | headless project lifecycle | 10.5 ms |
+| `create_project` | headless | headless project lifecycle | 63.6 ms |
+| `open_project` | headless | headless project lifecycle | 26.2 ms |
 | `convert_number` | listing | a single number conversion | 15.5 ms |
 | `get_entry_points` | listing | symbol table read | 97.2 ms |
 | `get_external_location` | listing | single external-location read | 7.4 ms |
@@ -180,77 +190,77 @@ The untimed tools are classified from what they do (the Why column): GUI-only to
 | `list_program_items` | listing | indexed listing read | 52.4 ms |
 | `list_shadowed_globals` | listing | indexed symbol read | 8.4 ms |
 | `analysis_status` | program | status read | 15.5 ms |
-| `close_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | external effect (refuses dry_run |
+| `close_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | 16.8 ms |
 | `create_memory_block` | program | program lifecycle, options, memory-map edits or I/O; no computation | 9.4 ms |
 | `create_property_map` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.6 ms |
 | `delete_bookmark` | program | program lifecycle, options, memory-map edits or I/O; no computation | 14.8 ms |
 | `delete_property_map` | program | program lifecycle, options, memory-map edits or I/O; no computation | 2.3 ms |
-| `exit_ghidra` | program | program lifecycle, options, memory-map edits or I/O; no computation | external effect (refuses dry_run |
+| `exit_ghidra` | program | shuts Ghidra down | 34.3 ms |
 | `get_address_spaces` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.4 ms |
 | `get_language_metadata` | program | language description read | 13.7 ms |
 | `get_metadata` | program | program lifecycle, options, memory-map edits or I/O; no computation | 11.1 ms |
 | `get_program_options` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.7 ms |
 | `get_property` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.3 ms |
-| `import_file` | program | program lifecycle, options, memory-map edits or I/O; no computation | external effect (refuses dry_run |
+| `import_file` | program | Ghidra's loader parsing the binary format (PE/ELF/...) into a new program database | 863.8 ms |
 | `list_bookmarks` | program | program lifecycle, options, memory-map edits or I/O; no computation | 14.8 ms |
 | `list_open_programs` | program | program lifecycle, options, memory-map edits or I/O; no computation | 12.4 ms |
 | `list_project_files` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.7 ms |
 | `list_properties` | program | program lifecycle, options, memory-map edits or I/O; no computation | 2.1 ms |
 | `list_scripts` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.5 ms |
-| `open_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | external effect (refuses dry_run |
+| `open_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | 38.0 ms |
 | `read_memory` | program | returns bytes; nothing to compute | 15.7 ms |
-| `reanalyze` | program | Ghidra's auto-analyzers (Java plug-ins, CPU) | external effect (refuses dry_run |
+| `reanalyze` | program | re-runs Ghidra's auto-analyzers; same profile as run_analysis (mostly the native decompiler) | 25357.8 ms |
 | `remove_program_option` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.7 ms |
 | `remove_property` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.1 ms |
-| `run_ghidra_script` | program | runs arbitrary Java/Python scripts in Ghidra | external effect (refuses dry_run |
-| `run_script_inline` | program | runs arbitrary Java/Python scripts in Ghidra | external effect (refuses dry_run |
-| `save_all_programs` | program | program lifecycle, options, memory-map edits or I/O; no computation | 11.0 ms |
-| `save_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.6 ms |
+| `run_ghidra_script` | program | compiles (javac + OSGi bundle) and runs an arbitrary user script; compile dominates | 3230.5 ms |
+| `run_script_inline` | program | compiles (javac + OSGi bundle) and runs user-supplied script code; compile dominates | 647.3 ms |
+| `save_all_programs` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.7 ms |
+| `save_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | 16.5 ms |
 | `set_bookmark` | program | program lifecycle, options, memory-map edits or I/O; no computation | 15.5 ms |
 | `set_image_base` | program | rebasing rewrites every address-keyed record in the program database (DB I/O, single transaction); no arithmetic a GPU could take over | 26276.8 ms |
 | `set_memory_block` | program | program lifecycle, options, memory-map edits or I/O; no computation | 9.3 ms |
 | `set_program_option` | program | program lifecycle, options, memory-map edits or I/O; no computation | 12.3 ms |
 | `set_property` | program | program lifecycle, options, memory-map edits or I/O; no computation | 7.3 ms |
 | `switch_program` | program | program lifecycle, options, memory-map edits or I/O; no computation | 1.6 ms |
-| `archive_project` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
-| `create_folder` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
-| `delete_file` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
-| `delete_project` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
-| `export_program` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
+| `archive_project` | project | packs the whole project directory into a .gar archive (file I/O + zip) | 2052.0 ms |
+| `create_folder` | project | project/file lifecycle and I/O | 15.7 ms |
+| `delete_file` | project | project/file lifecycle and I/O | 21.2 ms |
+| `delete_project` | project | project/file lifecycle and I/O | 6.3 ms |
+| `export_program` | project | serialises the program database into a packed .gzf file (DB + file I/O) | 723.9 ms |
 | `get_project_info` | project | project/file lifecycle and I/O | 15.6 ms |
-| `import_program` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
+| `import_program` | project | unpacks a .gzf into the project (file I/O + DB) | 129.2 ms |
 | `list_projects` | project | project/file lifecycle and I/O | 15.1 ms |
-| `move_file` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
-| `move_folder` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
-| `restore_project` | project | project/file lifecycle and I/O | external effect (refuses dry_run |
-| `checkin_program` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/admin/set_permissions` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/admin/terminate_all_checkouts` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/admin/terminate_checkout` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/admin/users` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/authenticate` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/checkouts` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/connect` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/disconnect` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/repositories` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/repository/create` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/repository/file` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/repository/files` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/status` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/version_control/add` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/version_control/checkout` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/version_control/undo_checkout` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
-| `server/version_history` | server | Ghidra Server networking and version control | needs a Ghidra Server / live debug target |
+| `move_file` | project | project/file lifecycle and I/O | 28.2 ms |
+| `move_folder` | project | project/file lifecycle and I/O | 17.1 ms |
+| `restore_project` | project | unpacks a .gar archive into a new project directory (file I/O + unzip) | 869.7 ms |
+| `checkin_program` | server | uploads the changed database buffers to the Ghidra Server (network I/O) | 215.8 ms |
+| `server/admin/set_permissions` | server | Ghidra Server networking and version control | 44.0 ms |
+| `server/admin/terminate_all_checkouts` | server | Ghidra Server networking and version control | 12.5 ms |
+| `server/admin/terminate_checkout` | server | Ghidra Server networking and version control | 1.5 ms |
+| `server/admin/users` | server | Ghidra Server networking and version control | 15.8 ms |
+| `server/authenticate` | server | Ghidra Server networking and version control | 16.0 ms |
+| `server/checkouts` | server | Ghidra Server networking and version control | 3.2 ms |
+| `server/connect` | server | Ghidra Server networking and version control | 68.3 ms |
+| `server/disconnect` | server | Ghidra Server networking and version control | 15.8 ms |
+| `server/repositories` | server | Ghidra Server networking and version control | 15.6 ms |
+| `server/repository/create` | server | Ghidra Server networking and version control | 18.4 ms |
+| `server/repository/file` | server | Ghidra Server networking and version control | 1.6 ms |
+| `server/repository/files` | server | Ghidra Server networking and version control | 31.9 ms |
+| `server/status` | server | Ghidra Server networking and version control | 20.3 ms |
+| `server/version_control/add` | server | Ghidra Server networking and version control | 61.6 ms |
+| `server/version_control/checkout` | server | Ghidra Server networking and version control | 82.2 ms |
+| `server/version_control/undo_checkout` | server | Ghidra Server networking and version control | 27.0 ms |
+| `server/version_history` | server | Ghidra Server networking and version control | 17.5 ms |
 | `can_rename_at_address` | symbol | database write/read of one symbol; no bulk computation | 15.3 ms |
 | `create_label` | symbol | database write/read of one symbol; no bulk computation | 42.8 ms |
 | `delete_label` | symbol | database write/read of one symbol; no bulk computation | 15.5 ms |
 | `rename_symbol` | symbol | database write/read of one symbol; no bulk computation | 27.3 ms |
-| `prompt_policy` | system | prompt policy configuration | not served by this server (GUI-only) |
+| `prompt_policy` | system | prompt policy configuration | 2.1 ms |
 | `check_connection` | utility | server identity / UI navigation | 1.2 ms |
 | `mcp/health` | utility | server identity / UI navigation | 7.0 ms |
 | `mcp/schema` | utility | server identity / UI navigation | 16.2 ms |
-| `tool/goto_address` | utility | server identity / UI navigation | not served by this server (GUI-only) |
-| `tool/running_tools` | utility | server identity / UI navigation | not served by this server (GUI-only) |
+| `tool/goto_address` | utility | server identity / UI navigation | 4.1 ms |
+| `tool/running_tools` | utility | server identity / UI navigation | 15.5 ms |
 | `add_memory_reference` | xref | single-address reference lookups/edits (indexed DB reads) | 13.2 ms |
 | `get_assembly_context` | xref | reads a few instructions around one address | 15.0 ms |
 | `get_xrefs_from` | xref | single-address reference lookups/edits (indexed DB reads) | 15.5 ms |

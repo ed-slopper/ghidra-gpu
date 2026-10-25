@@ -60,8 +60,11 @@ EXPLICIT = {
     "/get_function_documentation": "documentation record assembled from decompiler output (native, CPU)",
     "/disassemble_function": "Ghidra's SLEIGH disassembler (CPU); output is a listing read",
     "/disassemble_bytes": "Ghidra's SLEIGH disassembler (CPU) on caller-supplied bytes",
-    "/run_analysis": "Ghidra's auto-analyzers (Java plug-ins, CPU)",
-    "/reanalyze": "Ghidra's auto-analyzers (Java plug-ins, CPU)",
+    "/run_analysis": "Ghidra's auto-analyzers; measured on kernel32: of 22 s, 14.3 s is the native decompiler "
+                     "(Parameter ID 8.4 s, Switch Analysis 5.9 s), 3.6 s the x86 constant-propagation analyzer (a per-function "
+                     "symbolic interpreter writing references into the DB); the rest is many sub-second DB passes. "
+                     "Its function-start search is the part gpu_find_function_starts runs on the GPU",
+    "/reanalyze": "re-runs Ghidra's auto-analyzers; same profile as run_analysis (mostly the native decompiler)",
     "/analysis_status": "status read",
     "/read_memory": "returns bytes; nothing to compute",
     "/convert_number": "a single number conversion",
@@ -77,8 +80,8 @@ EXPLICIT = {
     "/list_program_items": "indexed listing read",
     "/list_calling_conventions": "compiler-spec read",
     "/get_external_location": "single external-location read",
-    "/run_ghidra_script": "runs arbitrary Java/Python scripts in Ghidra",
-    "/run_script_inline": "runs arbitrary Java/Python scripts in Ghidra",
+    "/run_ghidra_script": "compiles (javac + OSGi bundle) and runs an arbitrary user script; compile dominates",
+    "/run_script_inline": "compiles (javac + OSGi bundle) and runs user-supplied script code; compile dominates",
     "/analyze_function_completeness": "documentation-quality scoring driven by the decompiler (native, CPU) and naming rules",
     "/batch_string_anchor_report": "joins documentation state to string references (indexed DB reads); raw string "
                                    "extraction itself is gpu_list_strings",
@@ -97,6 +100,17 @@ EXPLICIT = {
     "/batch_set_comments": "a handful of comment writes followed by a deliberate 500 ms settle wait "
                            "(Thread.sleep in CommentService), not computation",
     "/set_variable_type": "retypes a variable at the decompiler layer: decompiles the function (native decompiler, CPU)",
+    "/debugger/remove_breakpoint": "one Trace RMI round trip to the debugger agent process (dbgeng); latency, not compute",
+    "/debugger/launch": "spawns the target and the Python debugger agent, then waits for its Trace RMI connection",
+    "/debugger/static_to_dynamic": "waits (up to 10 s) for the trace's static module mapping; a lookup, not compute",
+    "/exit_ghidra": "shuts Ghidra down",
+    "/set_variables": "retypes/renames variables in one transaction; decompiles the function for fresh SSA variables (native decompiler, CPU)",
+    "/export_program": "serialises the program database into a packed .gzf file (DB + file I/O)",
+    "/import_program": "unpacks a .gzf into the project (file I/O + DB)",
+    "/import_file": "Ghidra's loader parsing the binary format (PE/ELF/...) into a new program database",
+    "/archive_project": "packs the whole project directory into a .gar archive (file I/O + zip)",
+    "/restore_project": "unpacks a .gar archive into a new project directory (file I/O + unzip)",
+    "/checkin_program": "uploads the changed database buffers to the Ghidra Server (network I/O)",
     "/emulate_function": "single run of Ghidra's EmulatorHelper; batched runs are gpu_emulate_function_batch",
 }
 
@@ -171,7 +185,7 @@ def render(rows: list[dict]) -> str:
         ok = {p: v for p, v in res.items() if v.get("status") == "ok"}
         ms = sorted(v["ms"] for v in ok.values())
         n_write = sum(1 for v in ok.values() if v.get("dry_run"))
-        floor = t.get("http_floor_ms", 0)
+        floors = t.get("http_floor_runs_ms") or [t.get("http_floor_ms", 0)]
         untimed = defaultdict(int)
         for v in res.values():
             if v.get("status") != "ok":
@@ -184,8 +198,9 @@ def render(rows: list[dict]) -> str:
             f"including HTTP; write tools as `dry_run=true`, i.e. inside a transaction that is rolled back).",
             "",
             f"- **{len(ok)} of {len(res)} timed** ({len(ok) - n_write} read-only, {n_write} writes). Median "
-            f"**{ms[len(ms) // 2]:.1f} ms** against a round-trip floor of {floor:.1f} ms for a no-op request "
-            f"(`/check_connection`, measured in the same run).",
+            f"**{ms[len(ms) // 2]:.1f} ms**. A no-op request (`/check_connection`) took between "
+            f"{min(floors):.1f} and {max(floors):.1f} ms across the measurement runs (Windows loopback HTTP), so the "
+            f"many 1-20 ms rows are mostly request overhead around a lookup or a single transaction.",
             f"- Every timed tool slower than {SLOW_MS:.0f} ms, and where its time goes (each has its own reason in the table):",
         ]
         for p in slow:
@@ -194,10 +209,12 @@ def render(rows: list[dict]) -> str:
         for status, n in sorted(untimed.items(), key=lambda kv: -kv[1]):
             lines.append(f"  - {n}: {status}")
         lines += ["",
-                  "The untimed tools are classified from what they do (the Why column): GUI-only tools need a "
-                  "CodeBrowser and the debugger ones a live target; Ghidra Server tools need a server; tools that "
-                  "refuse a dry run write files, save, close or talk to a server; the rest needed inputs this "
-                  "program does not have.", ""]
+                  "How the hard ones were reached: GUI-only tools in a real Ghidra GUI started with an isolated "
+                  "settings directory (`-Dapplication.settingsdir`, no access to the user's projects); debugger tools "
+                  "against a live dbgeng trace of a launched `whoami.exe`; Ghidra Server tools against a scratch "
+                  "server bound to 127.0.0.1 (`python -m tools.gpu.measure_live`); tools that refuse a dry run "
+                  "(save, export, import, archive, project lifecycle, scripts, analysis) for real on a throwaway "
+                  "project. Rows marked `live` in docs/gpu_cpu_only_timings.json say which.", ""]
     lines += ["| Upstream tool | Group | Why | Measured |", "| --- | --- | --- | --- |"]
     for r in sorted(cpu, key=lambda r: (r["category"], r["path"])):
         lines.append(f"| `{r['path'][1:]}` | {r['category']} | {r['detail']} | {measured(t, r['path'])} |")

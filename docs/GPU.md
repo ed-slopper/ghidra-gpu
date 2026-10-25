@@ -160,11 +160,14 @@ than 8 bytes are `unsupported`, memory outside the windows and image is `bad_rea
 - Ghidra's decompiler — native C++, one function per call. `gpu_decompile_batch` runs it
   on a CPU thread pool and analyses every result on the backend you pick; `gpu_dataflow_slice`
   does the same for one slice. Both report decompile time separately from the analysis.
-- The 178 catalog tools listed in [GPU_COVERAGE.md](GPU_COVERAGE.md), each with a reason. 114 of them
-  were timed on kernel32.dll (writes as rolled-back dry runs): the median matches a no-op HTTP round
-  trip, and each of the 13 slower than 100 ms has its own measured explanation (mostly the decompiler;
-  also a database-wide rebase and a deliberate sleep). The 64 untimed ones are listed with why
-  (GUI/debugger, Ghidra Server, external effects, or inputs this program lacks).
+- The 178 catalog tools listed in [GPU_COVERAGE.md](GPU_COVERAGE.md), each with a reason, and 177 of
+  them measured on kernel32.dll rather than assumed: writes as rolled-back dry runs; tools with real
+  effects for real on a throwaway project; GUI-only tools in a real Ghidra GUI with an isolated settings
+  directory; debugger tools against a live dbgeng trace; Ghidra Server tools against a scratch server on
+  127.0.0.1 (`tools/gpu/measure_cpu_only.py`, `tools/gpu/measure_live.py`). Every one slower than 100 ms
+  has its own measured explanation -- mostly the native decompiler; also file/network I/O, a
+  database-wide rebase, script compilation and a deliberate sleep. The one untimed tool
+  (`debugger/static_to_dynamic`) needs a static mapping the test target did not have.
 
 ## Configuration
 
