@@ -1,7 +1,7 @@
 {
   "version": "7.0.0",
   "description": "GhidraMCP REST API Endpoint Specification",
-  "total_endpoints": 209,
+  "total_endpoints": 231,
   "categories": {
     "analysis": "Completeness analysis, control flow, similarity, memory inspection",
     "comment": "Plate, decompiler, disassembly and repeatable comments",
@@ -20,7 +20,8 @@
     "symbol": "Create/rename/delete labels, rename data, globals, external locations",
     "system": "Server-side prompt/automation policy",
     "utility": "Health checks, schema, version, tool control",
-    "xref": "Cross-references, call graphs, incoming/outgoing calls, data refs"
+    "xref": "Cross-references, call graphs, incoming/outgoing calls, data refs",
+    "gpu": "CUDA GPU twins of compute-heavy tools (scans, hashing, similarity, graphs, dominators, batched P-code emulation); backend=cpu|gpu|auto|both"
   },
   "endpoints": [
     {
@@ -1890,6 +1891,397 @@
         "headless"
       ],
       "description": "Get references to address"
+    },
+    {
+      "path": "/gpu_advise",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "op",
+        "work"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "Recommend cpu or gpu for an op (or gpu_* tool) at a given work size, without running it. Explains the crossover and whether it was measured."
+    },
+    {
+      "path": "/gpu_benchmark",
+      "method": "POST",
+      "category": "gpu",
+      "params": [
+        "ops",
+        "max_scale",
+        "reset"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "Measure CPU vs GPU for each op on synthetic inputs of growing size, record the crossover work size where the GPU starts winning, and persist it so backend=auto uses measured numbers (~/.ghidra-gpu/calibration.properties). Returns the timing table."
+    },
+    {
+      "path": "/gpu_call_graph_analysis",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "function",
+        "address",
+        "name",
+        "function_address",
+        "function_name",
+        "depth",
+        "top_n",
+        "pagerank_iterations",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of analyze_call_graph / get_full_call_graph / get_function_call_graph: whole-program call graph with recursion groups (SCCs), PageRank importance, functions unreachable from entry points, and -- given a function -- its callees/callers by depth."
+    },
+    {
+      "path": "/gpu_control_flow_analysis",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "function",
+        "address",
+        "name",
+        "function_address",
+        "function_name",
+        "max_functions",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of analyze_control_flow / find_dead_code, batched over every function at once: basic blocks, edges, cyclomatic complexity, dominator-based natural loops (back edges) and unreachable blocks. Sorted by complexity."
+    },
+    {
+      "path": "/gpu_dataflow_slice",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "address",
+        "variable",
+        "direction",
+        "max_steps",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of analyze_dataflow: decompile the function (Ghidra's decompiler, CPU), build its whole def-use graph, and slice forward (consumers) or backward (producers) from every P-code value at an address, optionally only those touching a named variable/register."
+    },
+    {
+      "path": "/gpu_detect_crypto_constants",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of detect_crypto_constants (upstream is a placeholder; this one works): scan all memory for AES, SHA-1/2, MD5, CRC-32, Blowfish, ChaCha/Salsa, TEA, RC5/6, DES, Twofish, Camellia, Whirlpool, RIPEMD, Base64 and other constant tables."
+    },
+    {
+      "path": "/gpu_diff_functions",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "pairs",
+        "program_b",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of diff_functions, batched: edit distance between the mnemonic sequences of many function pairs at once (same or different programs). similarity = 1 - distance / max(len)."
+    },
+    {
+      "path": "/gpu_emulate_function_batch",
+      "method": "POST",
+      "category": "gpu",
+      "params": [
+        "function",
+        "address",
+        "name",
+        "function_address",
+        "function_name",
+        "inputs",
+        "output_registers",
+        "buffer_register",
+        "max_steps",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of emulate_function, batched: run one function once per input set (one GPU thread each) and return the requested output registers per run. For fuzzing branches, tabulating a decoder, or brute-forcing a check routine."
+    },
+    {
+      "path": "/gpu_emulate_hash_batch",
+      "method": "POST",
+      "category": "gpu",
+      "params": [
+        "hash_function_address",
+        "string_register",
+        "result_register",
+        "target_hash",
+        "candidates",
+        "initial_registers",
+        "wide_string",
+        "hash_bits",
+        "max_steps",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of emulate_hash_batch: run a hash function on every candidate string in parallel (one GPU thread per candidate) on a P-code VM lowered from the function, and return the candidates producing target_hash. Resolves ROR13/CRC32/djb2/FNV/custom API hashing for 10^5+ candidates in one call. Works for any processor Ghidra decodes."
+    },
+    {
+      "path": "/gpu_entropy_map",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "window",
+        "high_threshold",
+        "block",
+        "max_ranges",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of analyze_data_region / inspect_memory_content at program scale: windowed Shannon entropy over every block plus byte histograms; flags high-entropy (packed/encrypted/compressed) and zero/low-entropy ranges."
+    },
+    {
+      "path": "/gpu_extract_iocs",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "types",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of extract_iocs_with_context: scan raw memory (not only defined strings) for URLs, IPv4 literals, e-mail addresses and registry paths, with the containing/referencing function for context."
+    },
+    {
+      "path": "/gpu_find_anti_analysis",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of find_anti_analysis_techniques / detect_malware_behaviors: one pass over all memory for anti-debug, anti-VM, timing and sandbox instruction encodings and API/tool name strings, grouped by category with containing functions."
+    },
+    {
+      "path": "/gpu_find_function_starts",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of find_code_gaps / find_next_undefined_function: scan executable memory for this architecture's function prologues and report the ones not inside any function or defined data -- likely missed functions."
+    },
+    {
+      "path": "/gpu_find_functions",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "query",
+        "case_sensitive",
+        "all_symbols",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of find_functions: substring search over every function name (and optionally every symbol name) at once."
+    },
+    {
+      "path": "/gpu_find_similar_functions",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "function",
+        "address",
+        "name",
+        "function_address",
+        "function_name",
+        "program_b",
+        "method",
+        "threshold",
+        "top_k",
+        "min_instructions",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of find_similar_functions / find_similar_functions_fuzzy / bulk_fuzzy_match: compare one function (or every function) against all functions of this or another program. method=minhash (Jaccard over mnemonic 3-grams) or cosine (mnemonic histograms). All-pairs on the GPU is where the speedup is largest."
+    },
+    {
+      "path": "/gpu_function_hashes",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "filter",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of get_function_hash at program scale: SHA-256 of every function's normalized instructions (byte-identical to get_function_hash's hash), plus groups of identical functions."
+    },
+    {
+      "path": "/gpu_info",
+      "method": "GET",
+      "category": "gpu",
+      "params": [],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU status: device, driver, memory, kernels, whether CUDA is usable (and why not), the AUTO cost model per op, and which upstream tools each GPU tool accelerates."
+    },
+    {
+      "path": "/gpu_list_strings",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "min_length",
+        "encoding",
+        "filter",
+        "include_xrefs",
+        "offset",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of list_strings / search_strings / find_undocumented_by_string: extract ASCII and UTF-16LE strings from raw memory (defined or not), optionally filtered by substring, with the containing function and referencing functions."
+    },
+    {
+      "path": "/gpu_pointer_scan",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "targets",
+        "pointer_size",
+        "alignment",
+        "block",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of get_xrefs_to for raw data: find every aligned pointer-sized value in memory that points at the given target addresses (or anywhere in the program), including references Ghidra has not created. Finds vtables, jump tables, callback arrays, string tables."
+    },
+    {
+      "path": "/gpu_search_byte_patterns",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "patterns",
+        "exec_only",
+        "block",
+        "alignment",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of search_byte_patterns: search all initialized memory for one or more hex patterns at once. '??' (or a mask) wildcards bytes."
+    },
+    {
+      "path": "/gpu_search_instructions",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "query",
+        "mnemonic",
+        "max_instructions",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of search_instructions: substring search over the text of every instruction (e.g. 'ecx+0xd0', 'call dword ptr', 'xor eax,eax'), optional mnemonic filter."
+    },
+    {
+      "path": "/gpu_selftest",
+      "method": "GET",
+      "category": "gpu",
+      "params": [],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "Run every GPU kernel against its CPU twin on generated inputs and report per-op agreement and timing. Use to confirm results are trustworthy on this GPU/driver."
     },
     {
       "path": "/import_data_types",

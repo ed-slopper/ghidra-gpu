@@ -32,7 +32,8 @@ public record CoreServices(
         MalwareSecurityService malwareSecurity,
         ProgramScriptService programScript,
         EmulationService emulation,
-        FunctionBundleService functionBundle) {
+        FunctionBundleService functionBundle,
+        GpuService gpu) {
 
     public static CoreServices build(ProgramProvider provider, ThreadingStrategy ts) {
         FunctionService function = new FunctionService(provider, ts);
@@ -51,14 +52,15 @@ public record CoreServices(
             new MalwareSecurityService(provider, ts),
             new ProgramScriptService(provider, ts),
             new EmulationService(provider, ts),
-            new FunctionBundleService(provider, ts, function));
+            new FunctionBundleService(provider, ts, function),
+            new GpuService(provider, ts));
     }
 
     /** Every shared service, in declaration order. */
     public List<Object> all() {
         return List.of(listing, comment, symbolLabel, function, xrefCallGraph, dataType,
             documentationHash, analysis, malwareSecurity, programScript, emulation,
-            functionBundle);
+            functionBundle, gpu);
     }
 
     /** The shared services plus a server's own, ready to hand to {@link AnnotationScanner}. */

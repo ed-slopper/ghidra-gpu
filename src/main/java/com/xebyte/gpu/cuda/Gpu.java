@@ -372,6 +372,15 @@ public final class Gpu {
             check(cu.cuCtxSynchronize(), kernel);
         }
 
+        /** A point to {@link #release} back to: frees everything allocated after it. */
+        public int mark() {
+            return owned.size();
+        }
+
+        public void release(int mark) {
+            while (owned.size() > mark) cu.cuMemFree_v2(owned.remove(owned.size() - 1).ptr);
+        }
+
         void freeAll() {
             for (Buf b : owned) cu.cuMemFree_v2(b.ptr);
             owned.clear();

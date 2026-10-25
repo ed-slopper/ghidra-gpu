@@ -354,7 +354,49 @@ public final class PcodeVm {
 
     // ------------------------------------------------------------------ GPU
 
+    /** Device bytes per launch for lane state + private memory; larger batches run in chunks. */
+    private static volatile long laneBudgetBytes = 512L << 20;
+
+    /** Tuning / test hook: shrink to force chunking, grow on large GPUs. */
+    public static void setLaneBudgetBytes(long bytes) {
+        laneBudgetBytes = Math.max(1, bytes);
+    }
+
     public static Result runGpu(Gpu.Session s, Program p, Memory m, Lanes lanes, long returnSentinel, int maxSteps) {
+        int n = lanes.count();
+        long perLane = p.stateSize + m.privSize;
+        int chunk = (int) Math.max(1, Math.min(n, laneBudgetBytes / perLane));
+        if (chunk >= n) return runGpuChunk(s, p, m, lanes, returnSentinel, maxSteps);
+        int[] status = new int[n], steps = new int[n], faultOp = new int[n];
+        long[] faultAddr = new long[n];
+        byte[] state = new byte[n * p.stateSize];
+        for (int start = 0; start < n; start += chunk) {
+            int c = Math.min(chunk, n - start);
+            Lanes sub = new Lanes(c,
+                Arrays.copyOfRange(lanes.stateInit(), start * p.stateSize, (start + c) * p.stateSize),
+                lanes.privInit(),
+                Arrays.copyOfRange(lanes.privInitOff(), start, start + c),
+                Arrays.copyOfRange(lanes.privInitLen(), start, start + c));
+            Result r = runGpuChunk(s, p, m, sub, returnSentinel, maxSteps);
+            System.arraycopy(r.status, 0, status, start, c);
+            System.arraycopy(r.steps, 0, steps, start, c);
+            System.arraycopy(r.faultOp, 0, faultOp, start, c);
+            System.arraycopy(r.faultAddr, 0, faultAddr, start, c);
+            System.arraycopy(r.state, 0, state, start * p.stateSize, c * p.stateSize);
+        }
+        return new Result(status, steps, faultOp, faultAddr, state, p.stateSize);
+    }
+
+    private static Result runGpuChunk(Gpu.Session s, Program p, Memory m, Lanes lanes, long returnSentinel, int maxSteps) {
+        int mark = s.mark();
+        try {
+            return runGpuChunkInner(s, p, m, lanes, returnSentinel, maxSteps);
+        } finally {
+            s.release(mark);
+        }
+    }
+
+    private static Result runGpuChunkInner(Gpu.Session s, Program p, Memory m, Lanes lanes, long returnSentinel, int maxSteps) {
         int n = lanes.count();
         Gpu.Buf ops = s.put(p.pack());
         Gpu.Buf firstOp = s.put(nonEmpty(p.instrFirstOp)), addrs = s.put(nonEmpty(p.instrAddr));

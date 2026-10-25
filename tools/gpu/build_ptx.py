@@ -94,7 +94,9 @@ def main() -> int:
         ptx = compile_ptx(nvrtc, cu.read_text(encoding="utf-8"), cu.name)
         out = OUT_DIR / (cu.stem + ".ptx")
         if args.check:
-            if not out.exists() or out.read_text(encoding="utf-8") != ptx:
+            # compare without line endings: git may check the PTX out with CRLF on Windows
+            def norm(t): return "\n".join(t.splitlines())
+            if not out.exists() or norm(out.read_text(encoding="utf-8")) != norm(ptx):
                 stale.append(out)
             continue
         out.write_text(ptx, encoding="utf-8", newline="\n")

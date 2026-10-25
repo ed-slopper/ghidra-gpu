@@ -360,6 +360,14 @@ public class GpuKernelParityTest {
         }
         PcodeVm.Result gv = gpu().run(s -> PcodeVm.runGpu(s, p, m, lanes, sentinel, 100_000));
         assertTrue(PcodeVm.Result.same(c, gv));
+        // Same lanes forced through many small chunks must give the identical answer.
+        PcodeVm.setLaneBudgetBytes(64L * (p.stateSize + m.privSize) + 1);
+        try {
+            PcodeVm.Result chunked = gpu().run(s -> PcodeVm.runGpu(s, p, m, lanes, sentinel, 100_000));
+            assertTrue(PcodeVm.Result.same(c, chunked));
+        } finally {
+            PcodeVm.setLaneBudgetBytes(512L << 20);
+        }
     }
 
     /** Random straight-line integer programs over random lane states: every op, every size. */

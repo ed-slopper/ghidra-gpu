@@ -4,6 +4,32 @@ Complete version history for the Ghidra MCP Server project.
 
 ---
 
+## ghidra-gpu (on v7.0.0) — CUDA acceleration: the `gpu` tool group
+
+**231 tools** — the 209 below plus 22 `gpu_*` tools (227 on the GUI plugin, 212 on the
+headless server, 208 on both).
+
+- **CUDA kernels** (`src/main/cuda/ghidra_gpu.cu`, 22 kernels) compiled to PTX with NVRTC
+  (`python -m tools.gpu.build_ptx`) and loaded through the driver API via JNA: only the
+  NVIDIA driver is needed at runtime. Each kernel has a Java twin producing identical
+  results (`GpuKernelParityTest`).
+- **`gpu` tool group** (`GpuService`, in `CoreServices`, so on both servers): byte
+  patterns, strings, entropy, pointer scan, crypto constants (upstream's was a
+  placeholder), anti-analysis, IOCs, function starts, name and instruction search,
+  function hashes (byte-identical to `get_function_hash`), MinHash/cosine similarity,
+  batched diff, call-graph SCC/PageRank/reachability, batched dominators, dataflow
+  slicing, and a batched P-code VM for `emulate_hash_batch` / `emulate_function`.
+- **Backend choice for agents**: every tool takes `backend=cpu|gpu|auto|both` and returns
+  an `execution` block (backend, timings, work, agreement). `gpu_benchmark` measures
+  crossovers per op and persists them; `gpu_advise`, `gpu_info`, `gpu_selftest`.
+- **Coverage**: `docs/GPU_COVERAGE.md` classifies all 209 upstream tools (31 ported, 178
+  with no computation to port and the reason); `tests/unit/test_gpu_coverage.py` keeps it
+  complete.
+- Build: `-PjavaToolchain=25` builds on a JDK-25-only machine (still Java 21 classes);
+  `-Pregenerate=true` arms `RegenerateEndpointsJson` under Gradle.
+
+---
+
 ## v7.0.0 (unreleased) — major: tool consolidation, JSON response contract, MCP conformance suite, an offline test tier, and a release gate that can actually block
 
 **209 tools** — 205 served by the GUI plugin, 190 by the headless server, 186

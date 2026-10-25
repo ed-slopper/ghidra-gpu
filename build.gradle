@@ -107,6 +107,14 @@ test {
     // prefers an explicit answer from the build.
     systemProperty 'project.basedir', project.projectDir.absolutePath
 
+    // Arms RegenerateEndpointsJson under Gradle: -Dregenerate on the command line only
+    // reaches the daemon JVM, so the property is forwarded explicitly.
+    //   ./gradlew test --tests com.xebyte.offline.RegenerateEndpointsJson -Pregenerate=true
+    if (providers.gradleProperty('regenerate').orNull == 'true') {
+        systemProperty 'regenerate', 'true'
+        outputs.upToDateWhen { false }
+    }
+
     // The real-Ghidra tier (com.xebyte.core.*GhidraTest) gates itself on the
     // GHIDRA_INSTALL_DIR *environment variable*, while every other task here accepts
     // -PGHIDRA_INSTALL_DIR. Without this passthrough, `./gradlew test -PGHIDRA_INSTALL_DIR=...`
