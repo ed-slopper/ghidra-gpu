@@ -181,7 +181,8 @@ def render(rows: list[dict]) -> str:
               "a host-to-device copy around a lookup.", ""]
     t = timings()
     if t:
-        res = t["results"]
+        cpu_paths = {r["path"] for r in cpu}
+        res = {p: v for p, v in t["results"].items() if p in cpu_paths}  # tools ported since are not cpu-only
         ok = {p: v for p, v in res.items() if v.get("status") == "ok"}
         ms = sorted(v["ms"] for v in ok.values())
         n_write = sum(1 for v in ok.values() if v.get("dry_run"))

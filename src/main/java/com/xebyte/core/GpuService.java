@@ -73,9 +73,11 @@ public class GpuService {
     private static final long RETURN_SENTINEL = 0xDEADBEEFL;
 
     private final ProgramProvider programProvider;
+    private final ThreadingStrategy threadingStrategy;
 
     public GpuService(ProgramProvider programProvider, ThreadingStrategy threadingStrategy) {
         this.programProvider = programProvider;
+        this.threadingStrategy = threadingStrategy;
     }
 
     // =====================================================================
@@ -119,6 +121,7 @@ public class GpuService {
         TOOL_MAP.put("gpu_dataflow_slice", List.of("analyze_dataflow"));
         // New capability rather than a twin: batch decompile (CPU) + analysis of the results (CPU or GPU).
         TOOL_MAP.put("gpu_decompile_batch", List.of());
+        TOOL_MAP.put("gpu_analysis_passes", List.of("run_analysis (data-parallel passes)", "reanalyze (data-parallel passes)"));
         TOOL_MAP.put("gpu_emulate_hash_batch", List.of("emulate_hash_batch"));
         TOOL_MAP.put("gpu_emulate_function_batch", List.of("emulate_function"));
     }
@@ -177,6 +180,7 @@ public class GpuService {
         Map.entry("gpu_call_graph_analysis", Ops.SCC), Map.entry("gpu_control_flow_analysis", Ops.DOMINATORS),
         Map.entry("gpu_find_function_starts", Ops.PATTERN_SCAN), Map.entry("gpu_dataflow_slice", Ops.BFS),
         Map.entry("gpu_decompile_batch", Ops.DOMINATORS),
+        Map.entry("gpu_analysis_passes", Ops.POINTER_SCAN),
         Map.entry("gpu_emulate_hash_batch", Ops.PCODE_VM), Map.entry("gpu_emulate_function_batch", Ops.PCODE_VM));
 
     @McpTool(path = "/gpu_selftest", description = "Run every GPU kernel against its CPU twin on generated inputs "
@@ -841,6 +845,149 @@ public class GpuService {
         out.put("note", "Create functions at good candidates with create_function; hits are heuristics.");
         out.put("execution", scan.get("execution"));
         return Response.ok(out);
+    }
+
+    // =====================================================================
+    // Auto-analysis passes
+    // =====================================================================
+
+    @McpTool(path = "/gpu_analysis_passes", method = "POST", description = "GPU twin of the data-parallel passes "
+        + "of run_analysis / reanalyze: (1) scalar-operand references -- every instruction scalar that is an "
+        + "address inside a memory block and has no reference yet (the Scalar Operand References analyzer); "
+        + "(2) address tables -- runs of consecutive pointers into the program (Create Address Tables). "
+        + "Function starts and strings, the other data-parallel passes, are gpu_find_function_starts and "
+        + "gpu_list_strings. apply=true creates the scalar references (source ANALYSIS) in one transaction. "
+        + "The decompiler-driven analyzers (Parameter ID, Switch Analysis) stay on the CPU.",
+        category = "gpu", access = ToolAccess.WRITE)
+    public Response gpuAnalysisPasses(
+            @Param(value = "min_table_entries", source = ParamSource.BODY, defaultValue = "4",
+                   description = "Minimum consecutive pointers reported as an address table") int minTable,
+            @Param(value = "apply", source = ParamSource.BODY, defaultValue = "false",
+                   description = "Create the found scalar-operand references") boolean apply,
+            @Param(value = "include_existing", source = ParamSource.BODY, defaultValue = "false",
+                   description = "Also check operands that already have a reference, and report how many of those "
+                               + "the pass finds with the same target (validation against Ghidra's own analysis)") boolean includeExisting,
+            @Param(value = "limit", source = ParamSource.BODY, defaultValue = "200", description = "Max rows listed per pass") int limit,
+            @Param(value = "backend", source = ParamSource.BODY, defaultValue = "auto", description = P_BACKEND) String backend,
+            @Param(value = "program", defaultValue = "", description = P_PROGRAM) String programName) {
+        ServiceUtils.ProgramOrError pe = ServiceUtils.getProgramOrError(programProvider, programName);
+        if (pe.hasError()) return pe.error();
+        Program p = pe.program();
+        Backend be;
+        try { be = Backend.parse(backend); } catch (IllegalArgumentException e) { return Response.err(e.getMessage()); }
+        boolean bigE = p.getLanguage().isBigEndian();
+        long lo = p.getMinAddress().getOffset(), hi = p.getMaxAddress().getOffset() + 1;
+        var mem = p.getMemory();
+        var space = p.getAddressFactory().getDefaultAddressSpace();
+
+        // Pass 1: scalar operands. Each candidate scalar becomes 8 bytes of a flat array so the
+        // pointer-scan kernel range-checks all of them in one launch.
+        long t0 = System.nanoTime();
+        List<Address> fromAddr = new ArrayList<>();
+        List<Integer> opIndex = new ArrayList<>();
+        List<Address> existingTo = new ArrayList<>();
+        java.io.ByteArrayOutputStream packed = new java.io.ByteArrayOutputStream();
+        var insIt = p.getListing().getInstructions(true);
+        while (insIt.hasNext()) {
+            Instruction ins = insIt.next();
+            for (int op = 0; op < ins.getNumOperands(); op++) {
+                var opRefs = ins.getOperandReferences(op);
+                if (opRefs.length > 0 && !includeExisting) continue;
+                for (Object o : ins.getOpObjects(op)) {
+                    if (!(o instanceof ghidra.program.model.scalar.Scalar sc)) continue;
+                    long v = sc.getUnsignedValue();
+                    for (int k = 0; k < 8; k++) packed.write((int) (v >>> (8 * k)));
+                    fromAddr.add(ins.getAddress());
+                    opIndex.add(op);
+                    existingTo.add(opRefs.length > 0 ? opRefs[0].getToAddress() : null);
+                }
+            }
+        }
+        byte[] scalars = packed.toByteArray();
+        ProgramData.Regions rs = ProgramData.regions(p, false, null, maxBytes());
+        double extractMs = ms(t0);
+        int cap = Math.max(1, scalars.length / 8);
+        Dispatch.Outcome<ScanOps.Hits> sc = Dispatch.run(Ops.POINTER_SCAN, be, scalars.length,
+            () -> ScanOps.pointersCpu(scalars, 8, 8, false, lo, hi, null, cap),
+            s -> ScanOps.pointersGpu(s, scalars, 8, 8, false, lo, hi, null, cap), ScanOps.Hits::same);
+        List<Map<String, Object>> refs = new ArrayList<>();
+        List<Object[]> toCreate = new ArrayList<>();
+        int matchedExisting = 0, existingTotal = 0;
+        for (Address e : existingTo) if (e != null && e.getAddressSpace().equals(space)) existingTotal++;
+        for (int i = 0; i < sc.value().size(); i++) {
+            int idx = (int) (sc.value().pos()[i] / 8);
+            Address to = space.getAddress(ScanOps.pointerValue(sc.value(), i));
+            if (!mem.contains(to)) continue;
+            if (existingTo.get(idx) != null) {
+                if (existingTo.get(idx).equals(to)) matchedExisting++;
+                continue;
+            }
+            toCreate.add(new Object[] {fromAddr.get(idx), to, opIndex.get(idx)});
+            if (refs.size() < Math.max(1, limit)) {
+                Symbol sym = p.getSymbolTable().getPrimarySymbol(to);
+                refs.add(JsonHelper.mapOf("from", fromAddr.get(idx).toString(), "operand", opIndex.get(idx),
+                    "to", to.toString(), "to_symbol", sym == null ? null : sym.getName()));
+            }
+        }
+
+        // Pass 2: address tables -- runs of aligned pointers into memory, from one pointer scan.
+        int ps = p.getDefaultPointerSize();
+        Dispatch.Outcome<List<ScanOps.Hits>> pt = Dispatch.run(Ops.POINTER_SCAN, be, rs.bytes(),
+            () -> { List<ScanOps.Hits> l = new ArrayList<>(); for (ProgramData.Region r : rs.regions()) l.add(ScanOps.pointersCpu(r.bytes(), ps, ps, bigE, lo, hi, null, 1 << 22)); return l; },
+            s -> { List<ScanOps.Hits> l = new ArrayList<>(); for (ProgramData.Region r : rs.regions()) l.add(ScanOps.pointersGpu(s, r.bytes(), ps, ps, bigE, lo, hi, null, 1 << 22)); return l; },
+            GpuService::sameHitLists);
+        List<Map<String, Object>> tables = new ArrayList<>();
+        int tableCount = 0;
+        for (int ri = 0; ri < rs.regions().size(); ri++) {
+            ProgramData.Region r = rs.regions().get(ri);
+            ScanOps.Hits h = pt.value().get(ri);
+            int i = 0;
+            while (i < h.size()) {
+                int j = i;
+                while (j < h.size() && mem.contains(space.getAddress(ScanOps.pointerValue(h, j)))
+                       && (j == i || h.pos()[j] == h.pos()[j - 1] + ps)) j++;
+                int run = j - i;
+                if (run >= Math.max(2, minTable)) {
+                    tableCount++;
+                    if (tables.size() < Math.max(1, limit)) {
+                        Address start = r.addressAt(h.pos()[i]);
+                        tables.add(JsonHelper.mapOf("address", start.toString(), "entries", run, "block", r.name(),
+                            "first_target", space.getAddress(ScanOps.pointerValue(h, i)).toString(),
+                            "defined", p.getListing().getDefinedDataAt(start) != null));
+                    }
+                }
+                i = Math.max(j, i + 1);
+            }
+        }
+
+        int created = 0;
+        if (apply && !toCreate.isEmpty()) {
+            try {
+                Response w = threadingStrategy.executeWrite(p, "GPU scalar operand references", () -> {
+                    var rm = p.getReferenceManager();
+                    int n = 0;
+                    for (Object[] c : toCreate) {
+                        if (rm.addMemoryReference((Address) c[0], (Address) c[1], ghidra.program.model.symbol.RefType.DATA,
+                            ghidra.program.model.symbol.SourceType.ANALYSIS, (Integer) c[2]) != null) n++;
+                    }
+                    return Response.ok(n);
+                });
+                if (w instanceof Response.Ok ok && ok.data() instanceof Integer n) created = n;
+            } catch (Exception e) {
+                return Response.err("applying references failed: " + e.getMessage());
+            }
+        }
+        Map<String, Object> ex = new LinkedHashMap<>();
+        ex.put("extract_ms", extractMs);
+        ex.put("scalar_references", sc.meta());
+        ex.put("address_tables", pt.meta());
+        if (includeExisting) {
+            ex.put("validation", JsonHelper.mapOf("existing_memory_references_on_scalar_operands", existingTotal,
+                "found_by_this_pass_with_same_target", matchedExisting));
+        }
+        return Response.ok(JsonHelper.mapOf("scalars_checked", scalars.length / 8, "scalar_references_found", toCreate.size(),
+            "scalar_references_created", created, "scalar_references", refs, "address_tables_found", tableCount,
+            "address_tables", tables, "execution", ex));
     }
 
     // =====================================================================

@@ -1,12 +1,13 @@
 {
   "binary": "kernel32.dll (Windows 11, x64, 4301 functions incl. externals, auto-analysed)",
   "function": "FUN_18000f650",
-  "http_floor_ms": 0.77,
+  "http_floor_ms": 0.86,
   "http_floor_runs_ms": [
     0.53,
     0.67,
     0.77,
     0.78,
+    0.86,
     1.22,
     1.46,
     12.95,
@@ -275,10 +276,8 @@
       "status": "ok"
     },
     "/debugger/static_to_dynamic": {
-      "detail": "{\"error\":\"No mapping found for 0x18000f650. Ensure modules are loaded and mapped in the debugger.\"}",
-      "live": "live trace, KERNEL32.DLL at 0x7ffc67010000",
-      "ms": 10200.07,
-      "status": "error"
+      "ms": 1.24,
+      "status": "ok"
     },
     "/debugger/status": {
       "ms": 14.07,
@@ -568,11 +567,6 @@
       "ms": 15.67,
       "status": "ok"
     },
-    "/reanalyze": {
-      "live": "real effect on a throwaway project",
-      "ms": 25357.78,
-      "status": "ok"
-    },
     "/recreate_struct": {
       "dry_run": true,
       "ms": 78.36,
@@ -636,11 +630,6 @@
     "/restore_project": {
       "live": "real effect on a throwaway project",
       "ms": 869.67,
-      "status": "ok"
-    },
-    "/run_analysis": {
-      "live": "real effect on a throwaway project",
-      "ms": 22056.94,
       "status": "ok"
     },
     "/run_ghidra_script": {

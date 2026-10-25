@@ -1207,6 +1207,11 @@ public class DebuggerService {
             ghidra.program.util.ProgramLocation staticLoc =
                     new ghidra.program.util.ProgramLocation(program, staticAddr);
 
+            // The mapping service only resolves programs open in the Debugger tool itself;
+            // a program open only in a CodeBrowser never maps, and this used to wait out the
+            // whole settle timeout and fail. Open it there first.
+            ensureOpenInDebuggerTool(ctx.tool, program);
+
             ghidra.program.util.ProgramLocation dynLoc = null;
             long mappingDeadline = System.currentTimeMillis() + MAPPING_SETTLE_TIMEOUT_MS;
             while (true) {
@@ -1229,6 +1234,20 @@ public class DebuggerService {
                     "program", program.getName()));
         } catch (Exception e) {
             return Response.err("Address translation failed: " + e.getMessage());
+        }
+    }
+
+    /** Opens {@code program} in the Debugger tool's program manager unless it already is. */
+    private static void ensureOpenInDebuggerTool(PluginTool tool, ghidra.program.model.listing.Program program) {
+        ghidra.app.services.ProgramManager pm = tool.getService(ghidra.app.services.ProgramManager.class);
+        if (pm == null) return;
+        for (ghidra.program.model.listing.Program open : pm.getAllOpenPrograms()) {
+            if (open == program) return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(() -> pm.openProgram(program, ghidra.app.services.ProgramManager.OPEN_VISIBLE));
+        } catch (Exception e) {
+            Msg.warn(DebuggerService.class, "Could not open " + program.getName() + " in the Debugger tool: " + e.getMessage());
         }
     }
 

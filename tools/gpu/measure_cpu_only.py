@@ -240,7 +240,7 @@ def main() -> int:
         else:
             a = sample_args(tool, args.function, addr, writes=write)
         if a is not None and "program" not in a and any(p["name"] == "program" for p in tool.get("params", [])):
-            a["program"] = meta.get("program_name", "")  # explicit, so a second open program never makes it ambiguous
+            a["program"] = args.program or meta.get("program_name", "")  # explicit, so a second open program never makes it ambiguous
         if a is None:
             results[row["path"]] = {"status": "needs a specific input, not timed"}
             continue

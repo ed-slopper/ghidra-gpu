@@ -6,8 +6,8 @@ Complete version history for the Ghidra MCP Server project.
 
 ## ghidra-gpu (on v7.0.0) — CUDA acceleration: the `gpu` tool group
 
-**232 tools** — the 209 below plus 23 `gpu_*` tools (228 on the GUI plugin, 213 on the
-headless server, 208 on both).
+**233 tools** — the 209 below plus 24 `gpu_*` tools (229 on the GUI plugin, 214 on the
+headless server, 210 on both).
 
 - **CUDA kernels** (`src/main/cuda/ghidra_gpu.cu`, 22 kernels) compiled to PTX with NVRTC
   (`python -m tools.gpu.build_ptx`) and loaded through the driver API via JNA: only the
@@ -25,6 +25,13 @@ headless server, 208 on both).
 - **Coverage**: `docs/GPU_COVERAGE.md` classifies all 209 upstream tools (31 ported, 178
   with no computation to port and the reason); `tests/unit/test_gpu_coverage.py` keeps it
   complete.
+- **`gpu_analysis_passes`**: the data-parallel passes of auto-analysis on the GPU (scalar-operand
+  references, address tables), optionally applied as references; on kernel32 it independently
+  re-derives 1,979 of the 3,220 references Ghidra placed on scalar operands, with identical targets
+  (the rest are computed, not scalar-valued, references).
+- **Fix: `/debugger/static_to_dynamic`** only resolved programs open in the Debugger tool, so a
+  program open in the CodeBrowser always waited out the 10 s settle timeout and failed; it now opens
+  the program in the Debugger tool first (verified live: 3 ms on the first call).
 - Build: `-PjavaToolchain=25` builds on a JDK-25-only machine (still Java 21 classes);
   `-Pregenerate=true` arms `RegenerateEndpointsJson` under Gradle.
 

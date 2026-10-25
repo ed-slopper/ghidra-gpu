@@ -1,7 +1,7 @@
 {
   "version": "7.0.0",
   "description": "GhidraMCP REST API Endpoint Specification",
-  "total_endpoints": 232,
+  "total_endpoints": 233,
   "categories": {
     "analysis": "Completeness analysis, control flow, similarity, memory inspection",
     "comment": "Plate, decompiler, disassembly and repeatable comments",
@@ -1905,6 +1905,24 @@
         "headless"
       ],
       "description": "Recommend cpu or gpu for an op (or gpu_* tool) at a given work size, without running it. Explains the crossover and whether it was measured."
+    },
+    {
+      "path": "/gpu_analysis_passes",
+      "method": "POST",
+      "category": "gpu",
+      "params": [
+        "min_table_entries",
+        "apply",
+        "include_existing",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "GPU twin of the data-parallel passes of run_analysis / reanalyze: (1) scalar-operand references -- every instruction scalar that is an address inside a memory block and has no reference yet (the Scalar Operand References analyzer); (2) address tables -- runs of consecutive pointers into the program (Create Address Tables). Function starts and strings, the other data-parallel passes, are gpu_find_function_starts and gpu_list_strings. apply=true creates the scalar references (source ANALYSIS) in one transaction. The decompiler-driven analyzers (Parameter ID, Switch Analysis) stay on the CPU."
     },
     {
       "path": "/gpu_benchmark",

@@ -5,7 +5,7 @@ compute-bearing tool in the catalog. Each twin runs on **either** backend and re
 what it did, so an AI agent can decide per task whether the CPU or the GPU should do the
 work, and verify that both give the same answer.
 
-- 23 `gpu_*` MCP tools: 19 analysis tools plus `gpu_info`, `gpu_benchmark`, `gpu_advise`, `gpu_selftest`
+- 24 `gpu_*` MCP tools: 19 analysis tools plus `gpu_info`, `gpu_benchmark`, `gpu_advise`, `gpu_selftest`
 - 31 of the 209 upstream tools have a GPU twin; the other 178 have nothing a GPU could compute
   (database edits, single-record lookups, I/O, UI, the native decompiler). The full,
   generated table with a reason per tool is [GPU_COVERAGE.md](GPU_COVERAGE.md).
@@ -80,6 +80,7 @@ Through the MCP bridge the group is lazy-loaded like any other:
 | `gpu_dataflow_slice` | analyze_dataflow | decompile (CPU), then forward/backward slice over the def-use graph |
 | `gpu_emulate_hash_batch` | emulate_hash_batch | one GPU thread per candidate on a P-code VM |
 | `gpu_emulate_function_batch` | emulate_function | one GPU thread per input set; registers, scratch buffer, stack args |
+| `gpu_analysis_passes` | run_analysis / reanalyze (their data-parallel passes) | scalar-operand references and address tables on the GPU; apply=true creates the references; include_existing=true validates against Ghidra's own analysis |
 | `gpu_decompile_batch` | (new; force_decompile is the per-function C path) | parallel CPU decompile, then dominators/loops of the high-level CFG and parameter / return dataflow slices on the chosen backend |
 
 ## Measured on an RTX 3060 (driver 581.80)
