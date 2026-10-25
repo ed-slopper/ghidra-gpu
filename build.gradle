@@ -54,10 +54,16 @@ if (ghidraDir) {
 // ---------------------------------------------------------------------------
 // Java toolchain
 // ---------------------------------------------------------------------------
+// The toolchain defaults to 21 (what CI uses). A machine with only a newer JDK can
+// build with -PjavaToolchain=25: the compiler still emits Java 21 classes (release 21).
+def javaToolchainVersion = (providers.gradleProperty('javaToolchain').orNull ?: '21') as int
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(javaToolchainVersion)
     }
+}
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
 }
 
 // ---------------------------------------------------------------------------
