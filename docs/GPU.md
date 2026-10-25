@@ -30,7 +30,7 @@ Every `gpu_*` analysis tool takes `backend`:
 
 | backend | what runs |
 | --- | --- |
-| `auto` (default) | the cost model picks: GPU when the op's work size is at or above its crossover |
+| `auto` (default) | the cost model picks: the faster side of the observed run nearest in work size, else the crossover |
 | `cpu` | the Java twin |
 | `gpu` | the CUDA kernel (falls back to CPU with a note if no GPU) |
 | `both` | both; returns the GPU result plus `agree`, both timings and the speedup |
@@ -50,6 +50,12 @@ from the op so the comparison is honest.
   machine and stores each crossover in `~/.ghidra-gpu/calibration.properties`
   (`GHIDRA_GPU_CALIBRATION` overrides the path). `auto` uses the measured numbers from
   then on, across Ghidra restarts. Run it once per machine.
+- **Every `backend=both` call teaches `auto`.** Each agreeing run is recorded (work, CPU ms,
+  GPU ms; the latest 64 per op, persisted with the calibration) and `auto` follows the run
+  nearest in work size, so a single crossover no longer has to hold at every scale. The
+  independent test below found PageRank and dominators 6-20x slower on the GPU at full size
+  on an 80k-function binary, far above their synthetic crossover; one `both` run there now
+  makes `auto` choose the CPU. `execution.auto_reason` names the run it followed.
 - **`gpu_advise(op|tool, work)`** answers "cpu or gpu?" without running anything.
 - **`gpu_info`** shows the device, the cost model per op (measured or default) and the
   upstream tools each GPU tool replaces.
@@ -118,6 +124,25 @@ thousand blocks for dominators. Plain memory-bound passes (string extraction, hi
 entropy, pointer scan, FNV) did not beat the CPU up to 4 MB because the PCIe copy
 dominates, and small graphs stay on the CPU; `auto` routes them accordingly. That is the
 point of keeping both backends.
+
+## Independent test (80,818-function binary)
+
+A separate session ran the suite against Townscaper's `GameAssembly.dll` (x86-32, 24 MB,
+899,827 basic blocks, ~19x kernel32) on the same RTX 3060: `gpu_selftest` 18/18, every
+`backend=both` call agreed, all 25,000 emulated zlib CRCs matched Python's. GPU wins included
+crypto constants 100x (4,381 vs 44 ms), anti-analysis 58x, function starts 19x, IOCs 12x,
+all-vs-all MinHash 23x, batched CRC emulation 14-18x. CPU wins at that size: call-graph SCC,
+PageRank, reachability, dominators, pointer scan, entropy. What it changed:
+
+- `auto` learns from observed runs (above) instead of trusting synthetic crossovers.
+- All-vs-all similarity is tiled (32M pairs per tile, stops at `limit`), so it no longer
+  refuses a whole large binary.
+- Extraction (`extract_ms`) dominated several tools there (45 s of hash text vs 82 ms of
+  hashing). It is Ghidra program-database reads under one lock: parallel extraction was
+  measured 1.7-2.2x *slower*, so it stays sequential (`-Dghidra.gpu.parallelExtract=true`
+  opts in). This is the cost to know about on very large binaries.
+- Decompiling scales ~2.6x across 16 threads (native decompiler); `gpu_decompile_batch`
+  spent 95% of a 20,000-function run decompiling.
 
 ## Architecture
 

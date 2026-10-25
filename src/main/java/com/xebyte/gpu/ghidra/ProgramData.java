@@ -191,6 +191,48 @@ public final class ProgramData {
         return out;
     }
 
+    /**
+     * {@code fn} over {@code items}, results in input order. Sequential by default:
+     * extraction is program-database reads, and Ghidra's database lock serialises them --
+     * measured on kernel32, 16 threads made hash-text extraction 2.2x SLOWER (1,659 vs
+     * 762 ms) and token extraction 1.7x slower (614 vs 354 ms) through lock contention.
+     * -Dghidra.gpu.parallelExtract=true opts in, for Ghidra builds where that changes.
+     */
+    public static <T, R> List<R> parallelMap(List<T> items, java.util.function.Function<T, R> fn) {
+        if (items.size() < 64 || !Boolean.getBoolean("ghidra.gpu.parallelExtract")) {
+            List<R> out = new ArrayList<>(items.size());
+            for (T t : items) out.add(fn.apply(t));
+            return out;
+        }
+        java.util.concurrent.ForkJoinPool pool = new java.util.concurrent.ForkJoinPool(
+            Math.max(1, Runtime.getRuntime().availableProcessors()));
+        try {
+            return pool.submit(() -> items.parallelStream().map(fn).toList()).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted", e);
+        } catch (java.util.concurrent.ExecutionException e) {
+            throw new IllegalStateException(e.getCause());
+        } finally {
+            pool.shutdown();
+        }
+    }
+
+    /** Mnemonic strings of a function, in address order (intern them to tokens afterwards). */
+    public static String[] mnemonics(Program p, Function f) {
+        List<Instruction> ins = instructions(p, f);
+        String[] m = new String[ins.size()];
+        for (int i = 0; i < m.length; i++) m[i] = ins.get(i).getMnemonicString();
+        return m;
+    }
+
+    /** Interns mnemonic strings into {@code vocab}; sequential, so ids are deterministic. */
+    public static int[] intern(String[] mnemonics, Map<String, Integer> vocab) {
+        int[] t = new int[mnemonics.length];
+        for (int i = 0; i < t.length; i++) t[i] = vocab.computeIfAbsent(mnemonics[i], k -> vocab.size());
+        return t;
+    }
+
     /** Mnemonic token ids for a function, interning into {@code vocab}. */
     public static int[] mnemonicTokens(Program p, Function f, Map<String, Integer> vocab) {
         List<Instruction> ins = instructions(p, f);

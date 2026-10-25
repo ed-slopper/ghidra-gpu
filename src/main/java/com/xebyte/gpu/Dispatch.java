@@ -44,9 +44,7 @@ public final class Dispatch {
         if (requested == Backend.AUTO) {
             boolean wantGpu = CostModel.prefersGpu(op, work);
             chosen = wantGpu && g != null ? Backend.GPU : Backend.CPU;
-            meta.put("auto_reason", g == null ? "no GPU: " + Gpu.unavailableReason()
-                : (wantGpu ? "work >= " : "work < ") + "crossover " + CostModel.crossover(op)
-                    + (CostModel.isCalibrated(op) ? " (measured)" : " (default; run gpu_benchmark to measure)"));
+            meta.put("auto_reason", g == null ? "no GPU: " + Gpu.unavailableReason() : CostModel.explain(op, work));
         }
         if ((chosen == Backend.GPU || chosen == Backend.BOTH) && g == null) {
             meta.put("fallback", "GPU unavailable (" + Gpu.unavailableReason() + "); ran on CPU");
@@ -86,6 +84,7 @@ public final class Dispatch {
             }
             double gpuMs = ms(t1);
             boolean agree = same != null ? same.test(c, gv) : c.equals(gv);
+            if (agree) CostModel.observe(op, work, cpuMs, gpuMs); // AUTO learns from every real comparison
             meta.put("cpu_ms", cpuMs);
             meta.put("gpu_ms", gpuMs);
             meta.put("agree", agree);

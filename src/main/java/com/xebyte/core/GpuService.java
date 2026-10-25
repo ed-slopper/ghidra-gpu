@@ -1108,13 +1108,13 @@ public class GpuService {
         if (!opcode && !"normalized".equalsIgnoreCase(kind)) return Response.err("kind must be normalized or opcode");
         long t0 = System.nanoTime();
         List<Function> fns = new ArrayList<>();
-        List<byte[]> texts = new ArrayList<>();
         for (Function f : ProgramData.functions(p)) {
             if (f.isThunk() || f.isExternal()) continue;
             if (filter != null && !filter.isEmpty() && !f.getName().toLowerCase(Locale.ROOT).contains(filter.toLowerCase(Locale.ROOT))) continue;
             fns.add(f);
-            texts.add(opcode ? ProgramData.opcodeText(p, f) : ProgramData.normalizedText(p, f));
         }
+        List<byte[]> texts = ProgramData.parallelMap(fns,
+            f -> opcode ? ProgramData.opcodeText(p, f) : ProgramData.normalizedText(p, f));
         ScanOps.Packed packed = packBytes(texts);
         double extractMs = ms(t0);
         Dispatch.Outcome<byte[]> o = Dispatch.run(Ops.SHA256, be, packed.bytes().length,
@@ -1182,13 +1182,7 @@ public class GpuService {
         Map<String, Integer> vocab = new HashMap<>();
         List<Function> fb = new ArrayList<>();
         List<int[]> tb = new ArrayList<>();
-        for (Function f : ProgramData.functions(pb)) {
-            if (f.isThunk() || f.isExternal()) continue;
-            int[] t = ProgramData.mnemonicTokens(pb, f, vocab);
-            if (t.length < minInstructions) continue;
-            fb.add(f);
-            tb.add(t);
-        }
+        collectTokens(pb, minInstructions, vocab, fb, tb);
         List<Function> fa = new ArrayList<>();
         List<int[]> ta = new ArrayList<>();
         if (function != null && !function.isBlank()) {
@@ -1200,71 +1194,126 @@ public class GpuService {
             fa = fb;
             ta = tb;
         } else {
-            for (Function f : ProgramData.functions(pa)) {
-                if (f.isThunk() || f.isExternal()) continue;
-                int[] t = ProgramData.mnemonicTokens(pa, f, vocab);
-                if (t.length < minInstructions) continue;
-                fa.add(f);
-                ta.add(t);
-            }
+            collectTokens(pa, minInstructions, vocab, fa, ta);
         }
         if (fa.isEmpty() || fb.isEmpty()) return Response.err("no functions with >= " + minInstructions + " instructions");
         double extractMs = ms(t0);
         int nA = fa.size(), nB = fb.size();
-        long pairs = (long) nA * nB;
-        if (pairs > 400_000_000L) return Response.err("too many pairs (" + pairs + "); pass function= or raise min_instructions");
         boolean cosine = method.equalsIgnoreCase("cosine");
-        Dispatch.Outcome<float[]> o;
+        // Rows of the similarity matrix are computed a tile at a time (at most TILE_PAIRS
+        // pairs), so whole-binary all-vs-all needs no pair cap; the scan stops once `limit`
+        // query functions with matches have been found.
+        int tileRows = (int) Math.max(1, Math.min(nA, TILE_PAIRS / Math.max(1, nB)));
+        int dim = Math.min(Math.max(1, vocab.size()), 512);
+        float[] histA = null, histB = null;
+        int[] sA = null, sB = null;
+        int k = 64;
         Map<String, Object> sigExec = null;
         if (cosine) {
-            int dim = Math.min(vocab.size(), 512);
-            float[] A = histo(ta, dim), B = ta == tb ? null : histo(tb, dim);
-            float[] BB = B == null ? A : B;
-            o = Dispatch.run(Ops.COSINE, be, pairs * dim,
-                () -> SimilarityOps.cosineCpu(A, nA, BB, nB, dim), s -> SimilarityOps.cosineGpu(s, A, nA, BB, nB, dim),
-                (x, y) -> ScanOps.sameFloats(x, y, 1e-6f));
+            histA = histo(ta, dim);
+            histB = ta == tb ? histA : histo(tb, dim);
         } else {
-            int k = 64;
-            SimilarityOps.TokenSets sa = SimilarityOps.TokenSets.of(ta), sb = ta == tb ? sa : SimilarityOps.TokenSets.of(tb);
-            long tok = sa.tokens().length + (sa == sb ? 0 : sb.tokens().length);
+            SimilarityOps.TokenSets setA = SimilarityOps.TokenSets.of(ta), setB = ta == tb ? setA : SimilarityOps.TokenSets.of(tb);
+            long tok = setA.tokens().length + (setA == setB ? 0 : setB.tokens().length);
             Dispatch.Outcome<int[][]> sig = Dispatch.run(Ops.MINHASH, be, tok * k,
-                () -> new int[][] {SimilarityOps.minhashCpu(sa, k, 3), sa == sb ? null : SimilarityOps.minhashCpu(sb, k, 3)},
-                s -> new int[][] {SimilarityOps.minhashGpu(s, sa, k, 3), sa == sb ? null : SimilarityOps.minhashGpu(s, sb, k, 3)},
+                () -> new int[][] {SimilarityOps.minhashCpu(setA, k, 3), setA == setB ? null : SimilarityOps.minhashCpu(setB, k, 3)},
+                s -> new int[][] {SimilarityOps.minhashGpu(s, setA, k, 3), setA == setB ? null : SimilarityOps.minhashGpu(s, setB, k, 3)},
                 (x, y) -> Arrays.equals(x[0], y[0]) && Arrays.equals(x[1], y[1]));
-            int[] sA = sig.value()[0], sB = sig.value()[1] == null ? sA : sig.value()[1];
+            sA = sig.value()[0];
+            sB = sig.value()[1] == null ? sA : sig.value()[1];
             sigExec = sig.meta();
-            o = Dispatch.run(Ops.MINHASH_SIM, be, pairs * k,
-                () -> SimilarityOps.minhashSimCpu(sA, nA, sB, nB, k), s -> SimilarityOps.minhashSimGpu(s, sA, nA, sB, nB, k),
-                Arrays::equals);
         }
-        float[] sim = o.value();
         List<Map<String, Object>> results = new ArrayList<>();
-        int pairsAbove = 0;
+        List<Map<String, Object>> tileMetas = new ArrayList<>();
         boolean same = pa == pb;
-        for (int a = 0; a < nA && results.size() < Math.max(1, limit); a++) {
-            List<int[]> best = new ArrayList<>();
-            for (int b = 0; b < nB; b++) {
-                if (same && fa.get(a).equals(fb.get(b))) continue;
-                if (sim[a * nB + b] >= threshold) best.add(new int[] {b});
+        long pairsCompared = 0;
+        for (int a0 = 0; a0 < nA && results.size() < Math.max(1, limit); a0 += tileRows) {
+            int rows = Math.min(tileRows, nA - a0);
+            long tilePairs = (long) rows * nB;
+            Dispatch.Outcome<float[]> o;
+            if (cosine) {
+                float[] tileA = Arrays.copyOfRange(histA, a0 * dim, (a0 + rows) * dim), hb = histB;
+                o = Dispatch.run(Ops.COSINE, be, tilePairs * dim,
+                    () -> SimilarityOps.cosineCpu(tileA, rows, hb, nB, dim), s -> SimilarityOps.cosineGpu(s, tileA, rows, hb, nB, dim),
+                    (x, y) -> ScanOps.sameFloats(x, y, 1e-6f));
+            } else {
+                int[] tileA = Arrays.copyOfRange(sA, a0 * k, (a0 + rows) * k), sb = sB;
+                o = Dispatch.run(Ops.MINHASH_SIM, be, tilePairs * k,
+                    () -> SimilarityOps.minhashSimCpu(tileA, rows, sb, nB, k), s -> SimilarityOps.minhashSimGpu(s, tileA, rows, sb, nB, k),
+                    Arrays::equals);
             }
-            pairsAbove += best.size();
-            if (best.isEmpty()) continue;
-            int aa = a;
-            best.sort((x, y) -> Float.compare(sim[aa * nB + y[0]], sim[aa * nB + x[0]]));
-            List<Map<String, Object>> m = new ArrayList<>();
-            for (int i = 0; i < Math.min(topK, best.size()); i++) {
-                int b = best.get(i)[0];
-                m.add(JsonHelper.mapOf("function", fb.get(b).getName(), "address", fb.get(b).getEntryPoint().toString(),
-                    "similarity", round3(sim[a * nB + b]), "instructions", tb.get(b).length));
+            tileMetas.add(o.meta());
+            pairsCompared += tilePairs;
+            float[] sim = o.value();
+            for (int r = 0; r < rows && results.size() < Math.max(1, limit); r++) {
+                int a = a0 + r;
+                List<Integer> best = new ArrayList<>();
+                for (int b = 0; b < nB; b++) {
+                    if (same && fa.get(a).equals(fb.get(b))) continue;
+                    if (sim[r * nB + b] >= threshold) best.add(b);
+                }
+                if (best.isEmpty()) continue;
+                int rr = r;
+                best.sort((x, y) -> Float.compare(sim[rr * nB + y], sim[rr * nB + x]));
+                List<Map<String, Object>> m = new ArrayList<>();
+                for (int i = 0; i < Math.min(topK, best.size()); i++) {
+                    int b = best.get(i);
+                    m.add(JsonHelper.mapOf("function", fb.get(b).getName(), "address", fb.get(b).getEntryPoint().toString(),
+                        "similarity", round3(sim[r * nB + b]), "instructions", tb.get(b).length));
+                }
+                results.add(JsonHelper.mapOf("query", fa.get(a).getName(), "address", fa.get(a).getEntryPoint().toString(),
+                    "instructions", ta.get(a).length, "matches", m));
             }
-            results.add(JsonHelper.mapOf("query", fa.get(a).getName(), "address", fa.get(a).getEntryPoint().toString(),
-                "instructions", ta.get(a).length, "matches", m));
         }
-        Map<String, Object> ex = exec(o, extractMs);
+        Map<String, Object> ex = summarizeTiles(tileMetas, extractMs);
         if (sigExec != null) ex.put("signatures", sigExec);
         return Response.ok(JsonHelper.mapOf("method", cosine ? "cosine" : "minhash", "queries", nA, "candidates", nB,
-            "pairs_compared", pairs, "queries_with_matches_reported", results.size(), "results", results,
-            "execution", ex));
+            "pairs_compared", pairsCompared, "pairs_total", (long) nA * nB, "tiles", tileMetas.size(),
+            "queries_with_matches_reported", results.size(), "results", results, "execution", ex));
+    }
+
+    /** Pairs per similarity tile: a 32M-entry float matrix (128 MB) on either backend. */
+    static final long TILE_PAIRS = 32L << 20;
+
+    /** One execution block for a tiled op: summed timings, all-tiles agreement, last tile's choice. */
+    static Map<String, Object> summarizeTiles(List<Map<String, Object>> metas, double extractMs) {
+        Map<String, Object> m = new LinkedHashMap<>(metas.isEmpty() ? Map.of() : metas.get(metas.size() - 1));
+        double cpu = 0, gpu = 0;
+        long work = 0;
+        boolean anyCpu = false, anyGpu = false, agree = true, anyAgree = false;
+        for (Map<String, Object> t : metas) {
+            if (t.get("cpu_ms") instanceof Number n) { cpu += n.doubleValue(); anyCpu = true; }
+            if (t.get("gpu_ms") instanceof Number n) { gpu += n.doubleValue(); anyGpu = true; }
+            if (t.get("work") instanceof Number n) work += n.longValue();
+            if (t.get("agree") instanceof Boolean b) { agree &= b; anyAgree = true; }
+        }
+        m.put("tiles", metas.size());
+        m.put("work", work);
+        m.remove("cpu_ms");
+        m.remove("gpu_ms");
+        m.remove("speedup");
+        m.remove("faster");
+        if (anyCpu) m.put("cpu_ms", Math.round(cpu * 100) / 100.0);
+        if (anyGpu) m.put("gpu_ms", Math.round(gpu * 100) / 100.0);
+        if (anyCpu && anyGpu && gpu > 0) {
+            m.put("speedup", Math.round(cpu / gpu * 100.0) / 100.0);
+            m.put("faster", gpu < cpu ? "gpu" : "cpu");
+        }
+        if (anyAgree) m.put("agree", agree);
+        m.put("extract_ms", extractMs);
+        return m;
+    }
+
+    /** Non-thunk functions with >= minInstructions, and their mnemonic tokens (parallel read, ordered ids). */
+    static void collectTokens(Program p, int minInstructions, Map<String, Integer> vocab, List<Function> fns, List<int[]> tokens) {
+        List<Function> all = new ArrayList<>();
+        for (Function f : ProgramData.functions(p)) if (!f.isThunk() && !f.isExternal()) all.add(f);
+        List<String[]> mn = ProgramData.parallelMap(all, f -> ProgramData.mnemonics(p, f));
+        for (int i = 0; i < all.size(); i++) {
+            if (mn.get(i).length < minInstructions) continue;
+            fns.add(all.get(i));
+            tokens.add(ProgramData.intern(mn.get(i), vocab));
+        }
     }
 
     static float[] histo(List<int[]> sets, int dim) {

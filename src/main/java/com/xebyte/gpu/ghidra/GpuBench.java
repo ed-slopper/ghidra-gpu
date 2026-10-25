@@ -156,6 +156,7 @@ public final class GpuBench {
                     double gpu = best(() -> g.run(c.gpu()));
                     work[k] = c.work();
                     gpuWins[k] = gpu < cpu;
+                    CostModel.observe(op, c.work(), cpu, gpu);
                     rows.add(Map.of("work", c.work(), "cpu_ms", round(cpu), "gpu_ms", round(gpu),
                         "speedup", round(cpu / Math.max(1e-6, gpu))));
                 }

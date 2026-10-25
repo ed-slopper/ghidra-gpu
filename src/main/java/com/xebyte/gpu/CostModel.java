@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
@@ -52,13 +53,69 @@ public final class CostModel {
     }
 
     private static final Map<String, Long> calibrated = new ConcurrentHashMap<>();
+    /** op -> observed runs {work, cpuMicros, gpuMicros}, newest last, at most {@link #MAX_OBSERVED}. */
+    private static final Map<String, List<long[]>> observed = new ConcurrentHashMap<>();
+    static final int MAX_OBSERVED = 64;
     private static volatile boolean loaded;
 
     private CostModel() {}
 
-    /** True when AUTO should run {@code op} on the GPU for this much work. */
+    /**
+     * True when AUTO should run {@code op} on the GPU for this much work.
+     *
+     * <p>Observed runs win over the crossover: the run nearest in work size (log scale)
+     * decides. A single crossover cannot express "GPU wins in the middle, CPU wins on huge
+     * graphs" -- measured on an 80k-function binary, PageRank and dominators were 6-20x
+     * slower on the GPU far above the synthetic crossover -- but one real backend=both run
+     * at that size is enough to make AUTO choose right from then on.
+     */
     public static boolean prefersGpu(String op, long work) {
+        long[] near = nearestObserved(op, work);
+        if (near != null) return near[2] < near[1];
         return work >= crossover(op);
+    }
+
+    /** One-line reason for AUTO's choice, naming the run or crossover it followed. */
+    public static String explain(String op, long work) {
+        long[] near = nearestObserved(op, work);
+        if (near != null) {
+            return "nearest observed run (work " + near[0] + "): cpu " + near[1] / 1000.0 + " ms, gpu "
+                + near[2] / 1000.0 + " ms";
+        }
+        long c = crossover(op);
+        return (work >= c ? "work >= " : "work < ") + "crossover " + c
+            + (isCalibrated(op) ? " (measured)" : " (default; run gpu_benchmark or a backend=both call to measure)");
+    }
+
+    /** Records one measured CPU-vs-GPU run (backend=both, gpu_benchmark) and persists it. */
+    public static void observe(String op, long work, double cpuMs, double gpuMs) {
+        if (work <= 0 || cpuMs < 0 || gpuMs < 0) return;
+        ensureLoaded();
+        List<long[]> l = observed.computeIfAbsent(op, k -> new java.util.concurrent.CopyOnWriteArrayList<>());
+        l.removeIf(s -> s[0] == work);
+        l.add(new long[] {work, Math.round(cpuMs * 1000), Math.round(gpuMs * 1000)});
+        while (l.size() > MAX_OBSERVED) l.remove(0);
+        save();
+    }
+
+    static long[] nearestObserved(String op, long work) {
+        ensureLoaded();
+        List<long[]> l = observed.get(op);
+        if (l == null || l.isEmpty() || work <= 0) return null;
+        long[] best = null;
+        double bestD = Double.MAX_VALUE;
+        double lw = Math.log(work);
+        for (long[] s : l) {
+            double d = Math.abs(Math.log(s[0]) - lw);
+            if (d < bestD) { bestD = d; best = s; }
+        }
+        return best;
+    }
+
+    public static int observedCount(String op) {
+        ensureLoaded();
+        List<long[]> l = observed.get(op);
+        return l == null ? 0 : l.size();
     }
 
     public static long crossover(String op) {
@@ -82,6 +139,7 @@ public final class CostModel {
 
     public static void resetCalibration() {
         calibrated.clear();
+        observed.clear();
         try {
             Files.deleteIfExists(file());
         } catch (IOException ignored) {
@@ -99,6 +157,7 @@ public final class CostModel {
             row.put("gpu_from_work", c == Long.MAX_VALUE ? "never (in measured range)" : c);
             row.put("source", calibrated.containsKey(op) ? "measured" : "default");
             row.put("work_unit", workUnit(op));
+            row.put("observed_runs", observedCount(op));
             out.put(op, row);
         }
         return out;
@@ -126,6 +185,8 @@ public final class CostModel {
     }
 
     private static Path file() {
+        String prop = System.getProperty("ghidra.gpu.calibration");
+        if (prop != null && !prop.isBlank()) return Paths.get(prop);
         String env = System.getenv("GHIDRA_GPU_CALIBRATION");
         if (env != null && !env.isBlank()) return Paths.get(env);
         return Paths.get(System.getProperty("user.home"), ".ghidra-gpu", "calibration.properties");
@@ -140,6 +201,20 @@ public final class CostModel {
         try (InputStream in = Files.newInputStream(f)) {
             p.load(in);
             for (String k : p.stringPropertyNames()) {
+                if (k.startsWith("observed.")) {
+                    List<long[]> l = new java.util.concurrent.CopyOnWriteArrayList<>();
+                    for (String run : p.getProperty(k).split(";")) {
+                        String[] f3 = run.trim().split(":");
+                        if (f3.length != 3) continue;
+                        try {
+                            l.add(new long[] {Long.parseLong(f3[0]), Long.parseLong(f3[1]), Long.parseLong(f3[2])});
+                        } catch (NumberFormatException ignored) {
+                            // skip a malformed run, keep the rest
+                        }
+                    }
+                    if (!l.isEmpty()) observed.put(k.substring("observed.".length()), l);
+                    continue;
+                }
                 try {
                     calibrated.put(k, Long.parseLong(p.getProperty(k).trim()));
                 } catch (NumberFormatException ignored) {
@@ -154,11 +229,17 @@ public final class CostModel {
     private static synchronized void save() {
         Properties p = new Properties();
         calibrated.forEach((k, v) -> p.setProperty(k, Long.toString(v)));
+        observed.forEach((k, l) -> {
+            StringBuilder sb = new StringBuilder();
+            for (long[] r : l) sb.append(sb.length() == 0 ? "" : ";").append(r[0]).append(':').append(r[1]).append(':').append(r[2]);
+            p.setProperty("observed." + k, sb.toString());
+        });
         Path f = file();
         try {
             Files.createDirectories(f.getParent());
             try (OutputStream out = Files.newOutputStream(f)) {
-                p.store(out, "ghidra-gpu AUTO crossovers (work units per op), written by gpu_benchmark");
+                p.store(out, "ghidra-gpu AUTO model: crossovers (work units per op) and observed runs "
+                    + "(observed.<op>=work:cpu_us:gpu_us;...), written by gpu_benchmark and backend=both calls");
             }
         } catch (IOException ignored) {
             // calibration still applies for this session
