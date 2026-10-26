@@ -18,6 +18,7 @@ import com.xebyte.gpu.CostModel;
 import com.xebyte.gpu.Dispatch;
 import com.xebyte.gpu.GraphOps;
 import com.xebyte.gpu.HashOps;
+import com.xebyte.gpu.NameOps;
 import com.xebyte.gpu.Ops;
 import com.xebyte.gpu.PcodeVm;
 import com.xebyte.gpu.ScanOps;
@@ -110,7 +111,9 @@ public class GpuService {
         TOOL_MAP.put("gpu_detect_crypto_constants", List.of("detect_crypto_constants"));
         TOOL_MAP.put("gpu_find_anti_analysis", List.of("find_anti_analysis_techniques", "detect_malware_behaviors"));
         TOOL_MAP.put("gpu_extract_iocs", List.of("extract_iocs_with_context"));
-        TOOL_MAP.put("gpu_find_functions", List.of("find_functions"));
+        TOOL_MAP.put("gpu_find_functions", List.of("find_functions", "find_data_types", "list_class_members"));
+        TOOL_MAP.put("gpu_name_collisions", List.of("rename_function (token-subset collision gate)",
+            "analyze_function_completeness (name-collision check)"));
         TOOL_MAP.put("gpu_search_instructions", List.of("search_instructions"));
         TOOL_MAP.put("gpu_function_hashes", List.of("get_function_hash", "compare_programs_documentation"));
         TOOL_MAP.put("gpu_find_similar_functions", List.of("find_similar_functions", "find_similar_functions_fuzzy", "bulk_fuzzy_match"));
@@ -174,7 +177,7 @@ public class GpuService {
         Map.entry("gpu_search_byte_patterns", Ops.PATTERN_SCAN), Map.entry("gpu_list_strings", Ops.STRING_SCAN),
         Map.entry("gpu_entropy_map", Ops.ENTROPY), Map.entry("gpu_pointer_scan", Ops.POINTER_SCAN),
         Map.entry("gpu_detect_crypto_constants", Ops.PATTERN_SCAN), Map.entry("gpu_find_anti_analysis", Ops.PATTERN_SCAN),
-        Map.entry("gpu_extract_iocs", Ops.IOC_SCAN), Map.entry("gpu_find_functions", Ops.SUBSTRING),
+        Map.entry("gpu_extract_iocs", Ops.IOC_SCAN), Map.entry("gpu_find_functions", Ops.SUBSTRING), Map.entry("gpu_name_collisions", Ops.NAME_COLLISIONS),
         Map.entry("gpu_search_instructions", Ops.SUBSTRING), Map.entry("gpu_function_hashes", Ops.SHA256),
         Map.entry("gpu_find_similar_functions", Ops.MINHASH_SIM), Map.entry("gpu_diff_functions", Ops.LEVENSHTEIN),
         Map.entry("gpu_call_graph_analysis", Ops.SCC), Map.entry("gpu_control_flow_analysis", Ops.DOMINATORS),
@@ -994,13 +997,16 @@ public class GpuService {
     // Names and instructions
     // =====================================================================
 
-    @McpTool(path = "/gpu_find_functions", description = "GPU twin of find_functions: substring search over every "
-        + "function name (and optionally every symbol name) at once.",
+    @McpTool(path = "/gpu_find_functions", description = "GPU twin of find_functions / find_data_types / "
+        + "list_class_members: substring search at once over every function name (scope=functions), symbol "
+        + "(scope=symbols), data type name or path (scope=data_types), or the class/namespace and implicit "
+        + "this-type of every function (scope=class_members; exact class name, case-insensitive).",
         category = "gpu", access = ToolAccess.READ_ONLY)
     public Response gpuFindFunctions(
             @Param(value = "query", description = "Substring to find") String query,
             @Param(value = "case_sensitive", defaultValue = "false", description = "Match case") boolean caseSensitive,
-            @Param(value = "all_symbols", defaultValue = "false", description = "Search every symbol, not just functions") boolean allSymbols,
+            @Param(value = "all_symbols", defaultValue = "false", description = "Search every symbol, not just functions (same as scope=symbols)") boolean allSymbols,
+            @Param(value = "scope", defaultValue = "functions", description = "functions | symbols | data_types | class_members") String scope,
             @Param(value = "limit", defaultValue = "200", description = "Max matches returned") int limit,
             @Param(value = "backend", defaultValue = "auto", description = P_BACKEND) String backend,
             @Param(value = "program", defaultValue = "", description = P_PROGRAM) String programName) {
@@ -1014,12 +1020,42 @@ public class GpuService {
         List<String> names = new ArrayList<>();
         List<String> where = new ArrayList<>();
         List<String> kinds = new ArrayList<>();
-        if (allSymbols) {
+        String sc = allSymbols ? "symbols" : (scope == null ? "functions" : scope.trim().toLowerCase(Locale.ROOT));
+        boolean exact = false;
+        if (sc.equals("symbols")) {
             for (Symbol s : p.getSymbolTable().getAllSymbols(true)) {
                 names.add(s.getName(true));
                 where.add(s.getAddress().toString());
                 kinds.add(s.getSymbolType().toString());
             }
+        } else if (sc.equals("data_types")) {
+            var it = p.getDataTypeManager().getAllDataTypes();
+            while (it.hasNext()) {
+                var dt = it.next();
+                names.add(dt.getName() + "\u0000" + dt.getPathName()); // matches name or path, as find_data_types does
+                where.add(dt.getPathName());
+                kinds.add(dt.getClass().getSimpleName().replace("DB", ""));
+            }
+        } else if (sc.equals("class_members")) {
+            // list_class_members' two membership rules: parent namespace named like the class,
+            // or an implicit 'this' whose pointee is that class. Both are matched exactly.
+            exact = true;
+            for (Function f : ProgramData.functions(p)) {
+                var parent = f.getParentNamespace();
+                String ns = parent != null && !parent.isGlobal() ? parent.getName() : "";
+                String thisType = "";
+                for (var prm : f.getParameters()) {
+                    if (prm.isAutoParameter() && "this".equals(prm.getName())
+                            && prm.getDataType() instanceof ghidra.program.model.data.Pointer ptr && ptr.getDataType() != null) {
+                        thisType = ptr.getDataType().getName();
+                    }
+                }
+                names.add(ns + "\u0000" + thisType);
+                where.add(f.getEntryPoint().toString());
+                kinds.add(f.getName(true));
+            }
+        } else if (!sc.equals("functions")) {
+            return Response.err("scope must be functions, symbols, data_types or class_members");
         } else {
             for (Function f : ProgramData.functions(p)) {
                 names.add(f.getName(true));
@@ -1030,15 +1066,29 @@ public class GpuService {
         ScanOps.Packed packed = ScanOps.Packed.of(names);
         double extractMs = ms(t0);
         byte[] needle = query.getBytes(StandardCharsets.UTF_8);
+        boolean ci = !caseSensitive || exact;
         Dispatch.Outcome<int[]> o = Dispatch.run(Ops.SUBSTRING, be, packed.bytes().length,
-            () -> ScanOps.substringCpu(packed, needle, !caseSensitive),
-            s -> ScanOps.substringGpu(s, packed, needle, !caseSensitive), Arrays::equals);
+            () -> ScanOps.substringCpu(packed, needle, ci),
+            s -> ScanOps.substringGpu(s, packed, needle, ci), Arrays::equals);
         List<Map<String, Object>> rows = new ArrayList<>();
         int total = 0;
         for (int i = 0; i < names.size(); i++) {
             if (o.value()[i] < 0) continue;
+            String shown = names.get(i);
+            if (exact) {
+                // the GPU narrowed it to rows containing the class name; keep exact matches only
+                String[] parts = shown.split("\u0000", -1);
+                boolean byNs = parts[0].equalsIgnoreCase(query), byThis = parts.length > 1 && parts[1].equalsIgnoreCase(query);
+                if (!byNs && !byThis) continue;
+                total++;
+                if (rows.size() < Math.max(1, limit)) rows.add(JsonHelper.mapOf("name", kinds.get(i), "address", where.get(i),
+                    "membership", byNs ? (byThis ? "namespace+this" : "namespace") : "this_type"));
+                continue;
+            }
+            int cut = shown.indexOf('\u0000');
+            if (cut >= 0) shown = shown.substring(0, cut);
             total++;
-            if (rows.size() < Math.max(1, limit)) rows.add(JsonHelper.mapOf("name", names.get(i), "address", where.get(i), "type", kinds.get(i)));
+            if (rows.size() < Math.max(1, limit)) rows.add(JsonHelper.mapOf("name", shown, "address", where.get(i), "type", kinds.get(i)));
         }
         return Response.ok(JsonHelper.mapOf("searched", names.size(), "total_matches", total, "returned", rows.size(),
             "matches", rows, "execution", exec(o, extractMs)));
@@ -1082,6 +1132,52 @@ public class GpuService {
         }
         return Response.ok(JsonHelper.mapOf("instructions_searched", it.text().size(), "total_matches", total,
             "returned", rows.size(), "matches", rows, "execution", exec(o, extractMs)));
+    }
+
+    @McpTool(path = "/gpu_name_collisions", description = "Batched version of rename_function's naming gate: "
+        + "token-subset near-duplicates (same module prefix, one name's tokens a strict subset of the other's, "
+        + "e.g. SendStateUpdate vs SendStateUpdateCommand). Check many proposed names at once against every "
+        + "function name, or leave names empty for a whole-program audit (every name vs every name).",
+        category = "gpu", access = ToolAccess.READ_ONLY)
+    public Response gpuNameCollisions(
+            @Param(value = "names", defaultValue = "", description = "Comma-separated proposed names; empty = audit all function names") String names,
+            @Param(value = "limit", defaultValue = "200", description = "Max collisions listed") int limit,
+            @Param(value = "backend", defaultValue = "auto", description = P_BACKEND) String backend,
+            @Param(value = "program", defaultValue = "", description = P_PROGRAM) String programName) {
+        ServiceUtils.ProgramOrError pe = ServiceUtils.getProgramOrError(programProvider, programName);
+        if (pe.hasError()) return pe.error();
+        Program p = pe.program();
+        Backend be;
+        try { be = Backend.parse(backend); } catch (IllegalArgumentException e) { return Response.err(e.getMessage()); }
+        long t0 = System.nanoTime();
+        List<String> existing = new ArrayList<>();
+        List<String> existingAddr = new ArrayList<>();
+        for (Function f : ProgramData.functions(p)) {
+            if (f.isExternal() || f.getName() == null || f.getName().isEmpty()) continue;
+            existing.add(f.getName());
+            existingAddr.add(f.getEntryPoint().toString());
+        }
+        boolean audit = names == null || names.isBlank();
+        List<String> cands = new ArrayList<>();
+        if (audit) cands = existing;
+        else for (String n : names.split(",")) if (!n.isBlank()) cands.add(n.trim());
+        NameOps.Encoded eb = NameOps.encode(existing, NamingConventions::tokenizeFunctionName, NamingConventions::extractModulePrefix);
+        NameOps.Encoded ea = audit ? eb : NameOps.encode(cands, NamingConventions::tokenizeFunctionName, NamingConventions::extractModulePrefix);
+        double extractMs = ms(t0);
+        Dispatch.Outcome<int[]> o = Dispatch.run(Ops.NAME_COLLISIONS, be, (long) ea.count() * eb.count(),
+            () -> NameOps.collisionsCpu(ea, eb), s -> NameOps.collisionsGpu(s, ea, eb), Arrays::equals);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        int total = 0;
+        for (int i = 0; i < cands.size(); i++) {
+            int j = o.value()[i];
+            if (j < 0) continue;
+            total++;
+            if (rows.size() < Math.max(1, limit)) {
+                rows.add(JsonHelper.mapOf("name", cands.get(i), "collides_with", existing.get(j), "collides_at", existingAddr.get(j)));
+            }
+        }
+        return Response.ok(JsonHelper.mapOf("mode", audit ? "audit" : "proposed", "names_checked", cands.size(),
+            "existing_names", existing.size(), "collisions", total, "results", rows, "execution", exec(o, extractMs)));
     }
 
     // =====================================================================

@@ -22,4 +22,5 @@ public final class Ops {
     public static final String SUBSTRING = "substring_search";
     public static final String IOC_SCAN = "ioc_scan";
     public static final String PCODE_VM = "pcode_vm";
+    public static final String NAME_COLLISIONS = "name_collisions";
 }

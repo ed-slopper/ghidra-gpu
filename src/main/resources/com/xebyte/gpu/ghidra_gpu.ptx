@@ -12067,4 +12067,236 @@ $L__BB21_413:
 	ret;
 
 }
+	// .globl	token_subset_pairs
+.visible .entry token_subset_pairs(
+	.param .u64 token_subset_pairs_param_0,
+	.param .u64 token_subset_pairs_param_1,
+	.param .u64 token_subset_pairs_param_2,
+	.param .u64 token_subset_pairs_param_3,
+	.param .u64 token_subset_pairs_param_4,
+	.param .u32 token_subset_pairs_param_5,
+	.param .u64 token_subset_pairs_param_6,
+	.param .u64 token_subset_pairs_param_7,
+	.param .u64 token_subset_pairs_param_8,
+	.param .u64 token_subset_pairs_param_9,
+	.param .u64 token_subset_pairs_param_10,
+	.param .u32 token_subset_pairs_param_11,
+	.param .u64 token_subset_pairs_param_12
+)
+{
+	.reg .pred 	%p<30>;
+	.reg .b32 	%r<50>;
+	.reg .b64 	%rd<85>;
+
+
+	ld.param.u64 	%rd38, [token_subset_pairs_param_0];
+	ld.param.u64 	%rd29, [token_subset_pairs_param_1];
+	ld.param.u64 	%rd30, [token_subset_pairs_param_2];
+	ld.param.u64 	%rd31, [token_subset_pairs_param_3];
+	ld.param.u64 	%rd32, [token_subset_pairs_param_4];
+	ld.param.u32 	%r19, [token_subset_pairs_param_5];
+	ld.param.u64 	%rd39, [token_subset_pairs_param_6];
+	ld.param.u64 	%rd33, [token_subset_pairs_param_7];
+	ld.param.u64 	%rd34, [token_subset_pairs_param_8];
+	ld.param.u64 	%rd35, [token_subset_pairs_param_9];
+	ld.param.u64 	%rd36, [token_subset_pairs_param_10];
+	ld.param.u32 	%r20, [token_subset_pairs_param_11];
+	ld.param.u64 	%rd37, [token_subset_pairs_param_12];
+	cvta.to.global.u64 	%rd1, %rd38;
+	cvta.to.global.u64 	%rd2, %rd39;
+	cvt.s64.s32 	%rd3, %r20;
+	mul.wide.s32 	%rd4, %r20, %r19;
+	mov.u32 	%r21, %ctaid.x;
+	mov.u32 	%r22, %ntid.x;
+	cvt.u64.u32 	%rd5, %r22;
+	mul.wide.u32 	%rd40, %r21, %r22;
+	mov.u32 	%r23, %tid.x;
+	cvt.u64.u32 	%rd41, %r23;
+	add.s64 	%rd82, %rd40, %rd41;
+	setp.ge.s64 	%p1, %rd82, %rd4;
+	@%p1 bra 	$L__BB22_25;
+
+	mov.u32 	%r24, %nctaid.x;
+	cvt.u64.u32 	%rd42, %r24;
+	mul.lo.s64 	%rd7, %rd5, %rd42;
+	cvta.to.global.u64 	%rd8, %rd30;
+	cvta.to.global.u64 	%rd9, %rd34;
+	cvta.to.global.u64 	%rd10, %rd31;
+	cvta.to.global.u64 	%rd11, %rd35;
+	cvta.to.global.u64 	%rd12, %rd32;
+	cvta.to.global.u64 	%rd13, %rd36;
+	cvta.to.global.u64 	%rd14, %rd29;
+	cvta.to.global.u64 	%rd15, %rd33;
+	cvta.to.global.u64 	%rd16, %rd37;
+	cvt.u32.u64 	%r25, %rd3;
+
+$L__BB22_2:
+	or.b64  	%rd43, %rd82, %rd3;
+	and.b64  	%rd44, %rd43, -4294967296;
+	setp.eq.s64 	%p2, %rd44, 0;
+	@%p2 bra 	$L__BB22_4;
+
+	div.s64 	%rd83, %rd82, %rd3;
+	mul.lo.s64 	%rd45, %rd83, %rd3;
+	sub.s64 	%rd84, %rd82, %rd45;
+	bra.uni 	$L__BB22_5;
+
+$L__BB22_4:
+	cvt.u32.u64 	%r26, %rd82;
+	div.u32 	%r27, %r26, %r25;
+	mul.lo.s32 	%r28, %r27, %r25;
+	sub.s32 	%r29, %r26, %r28;
+	cvt.u64.u32 	%rd83, %r27;
+	cvt.u64.u32 	%rd84, %r29;
+
+$L__BB22_5:
+	shl.b64 	%rd46, %rd83, 32;
+	cvt.s64.s32 	%rd24, %rd83;
+	shr.s64 	%rd47, %rd46, 30;
+	add.s64 	%rd48, %rd8, %rd47;
+	shl.b64 	%rd49, %rd84, 32;
+	cvt.s64.s32 	%rd25, %rd84;
+	shr.s64 	%rd50, %rd49, 30;
+	add.s64 	%rd51, %rd9, %rd50;
+	ld.global.u32 	%r1, [%rd48];
+	setp.eq.s32 	%p3, %r1, 0;
+	ld.global.u32 	%r2, [%rd51];
+	setp.eq.s32 	%p4, %r2, 0;
+	or.pred  	%p5, %p3, %p4;
+	setp.eq.s32 	%p6, %r1, %r2;
+	or.pred  	%p7, %p6, %p5;
+	@%p7 bra 	$L__BB22_24;
+
+	shl.b64 	%rd52, %rd24, 2;
+	add.s64 	%rd53, %rd10, %rd52;
+	shl.b64 	%rd54, %rd25, 2;
+	add.s64 	%rd55, %rd11, %rd54;
+	ld.global.u32 	%r30, [%rd55];
+	ld.global.u32 	%r31, [%rd53];
+	setp.ne.s32 	%p8, %r31, %r30;
+	@%p8 bra 	$L__BB22_24;
+
+	add.s64 	%rd57, %rd12, %rd52;
+	add.s64 	%rd59, %rd13, %rd54;
+	ld.global.u32 	%r32, [%rd59];
+	ld.global.u32 	%r33, [%rd57];
+	setp.eq.s32 	%p9, %r33, %r32;
+	@%p9 bra 	$L__BB22_24;
+
+	shl.b64 	%rd60, %rd24, 3;
+	add.s64 	%rd61, %rd14, %rd60;
+	ld.global.u64 	%rd26, [%rd61];
+	shl.b64 	%rd62, %rd25, 3;
+	add.s64 	%rd63, %rd15, %rd62;
+	ld.global.u64 	%rd27, [%rd63];
+	setp.lt.s32 	%p10, %r1, %r2;
+	@%p10 bra 	$L__BB22_16;
+	bra.uni 	$L__BB22_9;
+
+$L__BB22_16:
+	setp.lt.s32 	%p20, %r1, 1;
+	mov.u32 	%r47, 0;
+	setp.lt.s32 	%p21, %r2, 1;
+	or.pred  	%p22, %p20, %p21;
+	@%p22 bra 	$L__BB22_22;
+
+	mov.u32 	%r46, 0;
+	mov.u32 	%r47, %r46;
+
+$L__BB22_18:
+	cvt.s64.s32 	%rd72, %r47;
+	add.s64 	%rd73, %rd26, %rd72;
+	shl.b64 	%rd74, %rd73, 2;
+	add.s64 	%rd75, %rd1, %rd74;
+	cvt.s64.s32 	%rd76, %r46;
+	add.s64 	%rd77, %rd27, %rd76;
+	shl.b64 	%rd78, %rd77, 2;
+	add.s64 	%rd79, %rd2, %rd78;
+	ld.global.u32 	%r13, [%rd79];
+	ld.global.u32 	%r14, [%rd75];
+	setp.eq.s32 	%p23, %r14, %r13;
+	@%p23 bra 	$L__BB22_20;
+	bra.uni 	$L__BB22_19;
+
+$L__BB22_20:
+	add.s32 	%r47, %r47, 1;
+	bra.uni 	$L__BB22_21;
+
+$L__BB22_19:
+	setp.gt.u32 	%p24, %r14, %r13;
+	@%p24 bra 	$L__BB22_21;
+	bra.uni 	$L__BB22_24;
+
+$L__BB22_21:
+	add.s32 	%r46, %r46, 1;
+	setp.lt.s32 	%p25, %r46, %r2;
+	setp.lt.s32 	%p26, %r47, %r1;
+	and.pred  	%p27, %p26, %p25;
+	@%p27 bra 	$L__BB22_18;
+
+$L__BB22_22:
+	setp.ne.s32 	%p28, %r47, %r1;
+	@%p28 bra 	$L__BB22_24;
+	bra.uni 	$L__BB22_23;
+
+$L__BB22_9:
+	setp.lt.s32 	%p11, %r2, 1;
+	mov.u32 	%r43, 0;
+	setp.lt.s32 	%p12, %r1, 1;
+	or.pred  	%p13, %p11, %p12;
+	@%p13 bra 	$L__BB22_15;
+
+	mov.u32 	%r42, 0;
+	mov.u32 	%r43, %r42;
+
+$L__BB22_11:
+	cvt.s64.s32 	%rd64, %r43;
+	add.s64 	%rd65, %rd27, %rd64;
+	shl.b64 	%rd66, %rd65, 2;
+	add.s64 	%rd67, %rd2, %rd66;
+	cvt.s64.s32 	%rd68, %r42;
+	add.s64 	%rd69, %rd26, %rd68;
+	shl.b64 	%rd70, %rd69, 2;
+	add.s64 	%rd71, %rd1, %rd70;
+	ld.global.u32 	%r5, [%rd71];
+	ld.global.u32 	%r6, [%rd67];
+	setp.eq.s32 	%p14, %r6, %r5;
+	@%p14 bra 	$L__BB22_13;
+	bra.uni 	$L__BB22_12;
+
+$L__BB22_13:
+	add.s32 	%r43, %r43, 1;
+	bra.uni 	$L__BB22_14;
+
+$L__BB22_12:
+	setp.gt.u32 	%p15, %r6, %r5;
+	@%p15 bra 	$L__BB22_14;
+	bra.uni 	$L__BB22_24;
+
+$L__BB22_14:
+	add.s32 	%r42, %r42, 1;
+	setp.lt.s32 	%p16, %r42, %r1;
+	setp.lt.s32 	%p17, %r43, %r2;
+	and.pred  	%p18, %p17, %p16;
+	@%p18 bra 	$L__BB22_11;
+
+$L__BB22_15:
+	setp.eq.s32 	%p19, %r43, %r2;
+	@%p19 bra 	$L__BB22_23;
+	bra.uni 	$L__BB22_24;
+
+$L__BB22_23:
+	add.s64 	%rd81, %rd16, %rd52;
+	cvt.u32.u64 	%r40, %rd84;
+	atom.global.min.s32 	%r41, [%rd81], %r40;
+
+$L__BB22_24:
+	add.s64 	%rd82, %rd82, %rd7;
+	setp.lt.s64 	%p29, %rd82, %rd4;
+	@%p29 bra 	$L__BB22_2;
+
+$L__BB22_25:
+	ret;
+
+}
 

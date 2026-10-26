@@ -6,8 +6,8 @@ Complete version history for the Ghidra MCP Server project.
 
 ## ghidra-gpu (on v7.0.0) — CUDA acceleration: the `gpu` tool group
 
-**233 tools** — the 209 below plus 24 `gpu_*` tools (229 on the GUI plugin, 214 on the
-headless server, 210 on both).
+**234 tools** — the 209 below plus 25 `gpu_*` tools (230 on the GUI plugin, 215 on the
+headless server, 211 on both).
 
 - **CUDA kernels** (`src/main/cuda/ghidra_gpu.cu`, 22 kernels) compiled to PTX with NVRTC
   (`python -m tools.gpu.build_ptx`) and loaded through the driver API via JNA: only the
@@ -29,6 +29,13 @@ headless server, 210 on both).
   references, address tables), optionally applied as references; on kernel32 it independently
   re-derives 1,979 of the 3,220 references Ghidra placed on scalar operands, with identical targets
   (the rest are computed, not scalar-valued, references).
+- **`gpu_name_collisions`** (new kernel `token_subset_pairs`): rename_function's token-subset naming gate,
+  batched over many proposed names or as a whole-program audit; the CPU twin matches
+  `NamingConventions.findTokenSubsetCollision` exactly. `gpu_find_functions` gains `scope=data_types`
+  and `scope=class_members` (find_data_types, list_class_members).
+- **Hand review** of every program-wide loop in the non-GPU tools, recorded in docs/GPU_COVERAGE.md;
+  the four it found worth porting are ported above.
+- **docs/GPU_DECOMPILE_GUIDE.md**: which decompilation/RE tasks belong on the GPU, from measurements.
 - **Fix: `/debugger/static_to_dynamic`** only resolved programs open in the Debugger tool, so a
   program open in the CodeBrowser always waited out the 10 s settle timeout and failed; it now opens
   the program in the Debugger tool first (verified live: 3 ms on the first call).

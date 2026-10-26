@@ -126,6 +126,20 @@ public final class GpuBench {
             GraphOps.Cfgs c = GraphOps.Cfgs.of(gs);
             return new Case(w, () -> GraphOps.dominatorsCpu(c), s -> GraphOps.dominatorsGpu(s, c));
         });
+        FACTORIES.put(Ops.NAME_COLLISIONS, (k, r) -> {
+            List<String> names = new ArrayList<>();
+            String[] verbs = {"Get", "Set", "Update", "Process", "Init", "Free", "Parse", "Send"};
+            String[] nouns = {"State", "Player", "Buffer", "Packet", "Unit", "Item", "Skill", "Level", "Command", "Table"};
+            for (int i = 0; i < (500 << k); i++) {
+                StringBuilder sb = new StringBuilder(verbs[r.nextInt(verbs.length)]);
+                for (int t = 0; t < 1 + r.nextInt(3); t++) sb.append(nouns[r.nextInt(nouns.length)]);
+                names.add(sb.toString());
+            }
+            com.xebyte.gpu.NameOps.Encoded e = com.xebyte.gpu.NameOps.encode(names,
+                com.xebyte.core.NamingConventions::tokenizeFunctionName, com.xebyte.core.NamingConventions::extractModulePrefix);
+            return new Case((long) e.count() * e.count(), () -> com.xebyte.gpu.NameOps.collisionsCpu(e, e),
+                s -> com.xebyte.gpu.NameOps.collisionsGpu(s, e, e));
+        });
         FACTORIES.put(Ops.PCODE_VM, (k, r) -> {
             int n = 32 << k;
             Object[] vm = ror13Vm(r, n);

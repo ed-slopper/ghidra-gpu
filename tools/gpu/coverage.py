@@ -115,6 +115,38 @@ EXPLICIT = {
 }
 
 
+# Hand review (2026-10-25) of every place a non-GPU tool -- or a helper it calls -- iterates a
+# whole-program collection (all functions, instructions, symbols, defined data, data types,
+# references, comments, bookmarks). Each was read in context. "ported" verdicts must name a
+# GPU tool that TOOL_MAP maps the path to (tests/unit/test_gpu_coverage.py checks it).
+REVIEW = {
+    "/rename_function": "ported: token-subset collision check against every function name -> gpu_name_collisions "
+                        "(batched; CPU twin matches NamingConventions.findTokenSubsetCollision exactly)",
+    "/analyze_function_completeness": "ported: its name-collision check over all function names -> gpu_name_collisions; "
+                                      "the rest is per-function decompiler-driven scoring",
+    "/find_data_types": "ported: substring over every data type name and path -> gpu_find_functions scope=data_types",
+    "/list_class_members": "ported: namespace / implicit-this filter over every function -> gpu_find_functions scope=class_members",
+    "/archive_ingest_program": "partly ported: the per-function opcode SHA-256 -> gpu_function_hashes kind=opcode; the rest builds "
+                               "upload payloads from DB reads",
+    "/batch_string_anchor_report": "string extraction is gpu_list_strings; the report itself joins defined strings to their "
+                                   "referencing functions through DB indexes (no arithmetic)",
+    "/get_entry_points": "walks all symbols keeping isExternalEntryPoint -- a stored flag, so the cost is the walk itself",
+    "/list_program_items": "enumerates one kind of item and pages it (collectMethodNames/ClassNames/Exports/Namespaces); no predicate to compute",
+    "/list_bookmarks": "enumerates bookmarks and pages them",
+    "/merge_program_documentation": "copies every documented item to the same address in another program: address-keyed DB "
+                                    "lookups and writes, nothing data-parallel",
+    "/disassemble_function": "getFunctions(start, true) only to find the next function boundary (bounded)",
+    "/analyze_for_documentation": "reference iteration bounded to one function body (getReferenceSourceIterator(body))",
+    "/create_label": "symbol iterator at one address",
+    "/set_global": "findEvictionVictims: symbols in the range being retyped (bounded)",
+    "/resolve_duplicate_type": "findAllTypesBySimpleName: one name looked up across data types",
+    "(name lookups)": "ServiceUtils.functionsNamedIgnoreCase / searchByNameInAllCategories: one name resolved per call, "
+                      "a single equality pass -- cheaper than a host-to-device copy of the names",
+    "(struct matching)": "AnalysisService.findMatchingStructType: a few parameter names matched against data type names "
+                         "inside per-function completeness/documentation analysis",
+}
+
+
 def ported_map() -> dict[str, list[str]]:
     """upstream path -> [gpu tools] parsed from GpuService.TOOL_MAP."""
     text = SERVICE.read_text(encoding="utf-8")
@@ -175,6 +207,13 @@ def render(rows: list[dict]) -> str:
     ]
     for r in sorted(gpu, key=lambda r: r["path"]):
         lines.append(f"| `{r['path'][1:]}` | {', '.join('`' + g + '`' for g in r['detail'].split(', '))} |")
+    lines += ["", "## Code review: every program-wide loop outside the GPU tools", "",
+              "Every place a non-GPU tool (or a helper it calls) iterates a whole-program collection was read "
+              "in context. Verdicts:", "", "| Tool / helper | Verdict |", "| --- | --- |"]
+    for path, verdict in REVIEW.items():
+        lines.append(f"| `{path.lstrip('/')}` | {verdict} |")
+    lines += ["", "Every other non-ported tool touches a bounded number of records per call (one address, one "
+              "function, one type, one setting) or is lifecycle/I-O.", ""]
     lines += ["", "## Not ported: nothing a GPU could compute", "",
               "These tools are database edits, single-record lookups, I/O, lifecycle or UI actions, or",
               "wrap Ghidra's native decompiler / SLEIGH disassembler. Moving them to a GPU would only add",

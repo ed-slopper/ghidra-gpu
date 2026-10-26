@@ -1,11 +1,13 @@
 # ghidra-gpu: CUDA acceleration for ghidra-mcp
 
+Which tasks to send to the GPU while decompiling: **[GPU_DECOMPILE_GUIDE.md](GPU_DECOMPILE_GUIDE.md)**.
+
 ghidra-gpu is ghidra-mcp 7.0.0 plus a `gpu` tool group: CUDA twins of every
 compute-bearing tool in the catalog. Each twin runs on **either** backend and reports
 what it did, so an AI agent can decide per task whether the CPU or the GPU should do the
 work, and verify that both give the same answer.
 
-- 24 `gpu_*` MCP tools: 19 analysis tools plus `gpu_info`, `gpu_benchmark`, `gpu_advise`, `gpu_selftest`
+- 25 `gpu_*` MCP tools: 19 analysis tools plus `gpu_info`, `gpu_benchmark`, `gpu_advise`, `gpu_selftest`
 - 31 of the 209 upstream tools have a GPU twin; the other 178 have nothing a GPU could compute
   (database edits, single-record lookups, I/O, UI, the native decompiler). The full,
   generated table with a reason per tool is [GPU_COVERAGE.md](GPU_COVERAGE.md).
@@ -76,7 +78,8 @@ Through the MCP bridge the group is lazy-loaded like any other:
 | `gpu_find_anti_analysis` | find_anti_analysis_techniques, detect_malware_behaviors | anti-debug/VM/timing/sandbox encodings and API names |
 | `gpu_extract_iocs` | extract_iocs_with_context | URLs, IPv4, e-mail, registry paths in raw memory |
 | `gpu_find_function_starts` | find_code_gaps, find_next_undefined_function | per-architecture prologue scan outside known functions |
-| `gpu_find_functions` | find_functions | substring over all function (or symbol) names |
+| `gpu_find_functions` | find_functions, find_data_types, list_class_members | substring over all function / symbol / data type names, or class membership (`scope=`) |
+| `gpu_name_collisions` | rename_function's naming gate, analyze_function_completeness | token-subset near-duplicate names, batched or as a whole-program audit |
 | `gpu_search_instructions` | search_instructions | substring over every instruction's text |
 | `gpu_function_hashes` | get_function_hash, compare_programs_documentation | SHA-256 of the normalized (`get_function_hash`) or opcode (`archive_ingest_program`) stream; both byte-identical to upstream on all 2839 kernel32 functions; duplicate groups |
 | `gpu_find_similar_functions` | find_similar_functions(_fuzzy), bulk_fuzzy_match | MinHash Jaccard or cosine, one-vs-all or all-vs-all, cross-program |

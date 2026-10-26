@@ -155,7 +155,7 @@ public final class Gpu {
         "fnv1a64_batch", "sha256_batch", "cosine_matrix", "minhash", "minhash_similarity",
         "levenshtein_batch", "bfs_step", "scc_color_propagate", "scc_backward", "scc_trim", "scc_seed_roots",
         "scc_reset_colors", "pagerank_step", "dominators_batch", "substring_search", "ioc_scan",
-        "pcode_vm");
+        "pcode_vm", "token_subset_pairs");
 
     private static int envInt(String name, int dflt) {
         try {

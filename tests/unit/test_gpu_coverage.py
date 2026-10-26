@@ -47,3 +47,12 @@ def test_timings_cover_only_classified_cpu_only_tools():
     t = coverage.timings()
     cpu_only = {r["path"] for r in coverage.classify() if r["status"] == "cpu-only"}
     assert cpu_only <= set(t["results"]), f"cpu-only tools never measured: {sorted(cpu_only - set(t['results']))}"
+
+
+def test_review_verdicts_that_say_ported_name_a_mapped_gpu_tool():
+    ported = coverage.ported_map()
+    for path, verdict in coverage.REVIEW.items():
+        if not verdict.startswith("ported"):
+            continue
+        assert path in ported, f"{path} is reviewed as ported but GpuService.TOOL_MAP does not map it"
+        assert any(g in verdict for g in ported[path]), f"{path}: verdict names no GPU tool from TOOL_MAP {ported[path]}"

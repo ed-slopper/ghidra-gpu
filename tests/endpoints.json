@@ -1,7 +1,7 @@
 {
   "version": "7.0.0",
   "description": "GhidraMCP REST API Endpoint Specification",
-  "total_endpoints": 233,
+  "total_endpoints": 234,
   "categories": {
     "analysis": "Completeness analysis, control flow, similarity, memory inspection",
     "comment": "Plate, decompiler, disassembly and repeatable comments",
@@ -2171,6 +2171,7 @@
         "query",
         "case_sensitive",
         "all_symbols",
+        "scope",
         "limit",
         "backend",
         "program"
@@ -2253,6 +2254,22 @@
         "headless"
       ],
       "description": "GPU twin of list_strings / search_strings / find_undocumented_by_string: extract ASCII and UTF-16LE strings from raw memory (defined or not), optionally filtered by substring, with the containing function and referencing functions."
+    },
+    {
+      "path": "/gpu_name_collisions",
+      "method": "GET",
+      "category": "gpu",
+      "params": [
+        "names",
+        "limit",
+        "backend",
+        "program"
+      ],
+      "servers": [
+        "gui",
+        "headless"
+      ],
+      "description": "Batched version of rename_function's naming gate: token-subset near-duplicates (same module prefix, one name's tokens a strict subset of the other's, e.g. SendStateUpdate vs SendStateUpdateCommand). Check many proposed names at once against every function name, or leave names empty for a whole-program audit (every name vs every name)."
     },
     {
       "path": "/gpu_pointer_scan",

@@ -751,3 +751,36 @@ extern "C" __global__ void pcode_vm(const PcOp* ops, int nOps, const int* instrF
         status[lane] = code; steps[lane] = n; faultOp[lane] = pc; faultAddr[lane] = fa;
     }
 }
+
+// ---------------------------------------------------------------------------
+// 13. Token-subset name collisions (rename_function's naming gate, batched).
+//     Each name is a sorted, de-duplicated array of token hashes plus a module-
+//     prefix hash and a full-name hash. Candidate a collides with existing b when
+//     the prefixes match, the names differ, the set sizes differ, and one token set
+//     contains the other. out[a] = the smallest colliding b (atomicMin), matching
+//     NamingConventions.findTokenSubsetCollision's first-in-order answer.
+// ---------------------------------------------------------------------------
+__device__ bool sortedSubset(const u32* small, int ns, const u32* big, int nb) {
+    int i = 0, j = 0;
+    while (i < ns && j < nb) {
+        if (small[i] == big[j]) { i++; j++; }
+        else if (small[i] > big[j]) j++;
+        else return false;
+    }
+    return i == ns;
+}
+
+extern "C" __global__ void token_subset_pairs(const u32* tokA, const i64* offA, const int* lenA, const u32* prefA, const u32* nameA, int nA,
+        const u32* tokB, const i64* offB, const int* lenB, const u32* prefB, const u32* nameB, int nB, int* out) {
+    i64 total = (i64)nA * nB;
+    GRID_STRIDE(idx, total) {
+        int a = (int)(idx / nB), b = (int)(idx % nB);
+        int la = lenA[a], lb = lenB[b];
+        if (la == 0 || lb == 0 || la == lb) continue;
+        if (prefA[a] != prefB[b] || nameA[a] == nameB[b]) continue;
+        const u32* ta = tokA + offA[a]; const u32* tb = tokB + offB[b];
+        bool hit = la < lb ? sortedSubset(ta, la, tb, lb) : sortedSubset(tb, lb, ta, la);
+        if (hit) atomicMin(&out[a], b);
+    }
+}
+

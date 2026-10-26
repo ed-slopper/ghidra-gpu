@@ -162,6 +162,45 @@ public class GpuKernelParityTest {
         }
     }
 
+    // ------------------------------------------------------------------ name collisions
+
+    private static List<String> namePool(int n) {
+        String[] prefixes = {"", "", "", "NET_", "GFX_"};
+        String[] verbs = {"Get", "Set", "Update", "Process", "Send", "Init"};
+        String[] nouns = {"State", "Player", "Buffer", "Packet", "Unit", "Item", "Command", "Table"};
+        List<String> names = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            StringBuilder sb = new StringBuilder(prefixes[R.nextInt(prefixes.length)]).append(verbs[R.nextInt(verbs.length)]);
+            for (int t = 0; t < 1 + R.nextInt(3); t++) sb.append(nouns[R.nextInt(nouns.length)]);
+            names.add(sb.toString());
+        }
+        names.add("FUN_00401000");
+        names.add("");
+        return names;
+    }
+
+    @Test
+    public void nameCollisionCpuMatchesNamingConventions() {
+        List<String> names = namePool(400);
+        com.xebyte.gpu.NameOps.Encoded e = com.xebyte.gpu.NameOps.encode(names,
+            com.xebyte.core.NamingConventions::tokenizeFunctionName, com.xebyte.core.NamingConventions::extractModulePrefix);
+        int[] first = com.xebyte.gpu.NameOps.collisionsCpu(e, e);
+        for (int i = 0; i < names.size(); i++) {
+            String want = com.xebyte.core.NamingConventions.findTokenSubsetCollision(names.get(i), names);
+            String got = first[i] < 0 ? null : names.get(first[i]);
+            assertEquals("name " + names.get(i), want, got);
+        }
+    }
+
+    @Test
+    public void nameCollisionParity() {
+        Gpu g = gpu();
+        List<String> names = namePool(3000);
+        com.xebyte.gpu.NameOps.Encoded e = com.xebyte.gpu.NameOps.encode(names,
+            com.xebyte.core.NamingConventions::tokenizeFunctionName, com.xebyte.core.NamingConventions::extractModulePrefix);
+        assertArrayEquals(com.xebyte.gpu.NameOps.collisionsCpu(e, e), g.run(s -> com.xebyte.gpu.NameOps.collisionsGpu(s, e, e)));
+    }
+
     // ------------------------------------------------------------------ hashes
 
     @Test

@@ -50,6 +50,7 @@ public final class CostModel {
         DEFAULTS.put(Ops.SUBSTRING, 8L << 20);         // haystack bytes
         DEFAULTS.put(Ops.IOC_SCAN, 4L << 20);          // bytes
         DEFAULTS.put(Ops.PCODE_VM, 256L);              // lanes
+        DEFAULTS.put(Ops.NAME_COLLISIONS, 4L << 20);   // name pairs
     }
 
     private static final Map<String, Long> calibrated = new ConcurrentHashMap<>();
@@ -174,6 +175,7 @@ public final class CostModel {
             case Ops.PAGERANK -> "(nodes + edges) x iterations";
             case Ops.DOMINATORS -> "sum(blocks^2) / 32";
             case Ops.PCODE_VM -> "lanes";
+            case Ops.NAME_COLLISIONS -> "name pairs";
             case Ops.FNV_HASH, Ops.SHA256 -> "bytes hashed";
             case Ops.SUBSTRING -> "haystack bytes";
             default -> "bytes";
