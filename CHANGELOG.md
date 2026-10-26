@@ -40,6 +40,10 @@ headless server, 211 on both).
   GPU question; acting on its CPU-side findings, extracted program data is now cached per program
   (keyed by modification number; repeat calls 0-7 ms instead of 0.8-2.8 s on kernel32), GPU decompiles
   skip C printing, and decompile threads default to min(8, cores) where scaling measured flat.
+  Bulk `get_functions` and `analyze_struct_field_usage` now decompile on that worker pool
+  (kernel32: 20 bundles 5.8 s -> 0.95 s, struct field usage 4.0 s -> 2.6 s, identical output);
+  `-Dghidra.mcp.decompileWorkers` caps it. `list_globals`' reference counting was measured and
+  left alone: a one-pass batch was 50x slower and counts something else (docs/GPU.md).
 - **Fix: `/debugger/static_to_dynamic`** only resolved programs open in the Debugger tool, so a
   program open in the CodeBrowser always waited out the 10 s settle timeout and failed; it now opens
   the program in the Debugger tool first (verified live: 3 ms on the first call).

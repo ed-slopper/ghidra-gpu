@@ -3,7 +3,9 @@ package com.xebyte.core;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Program;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -189,6 +191,13 @@ public class FunctionBundleService {
         int requested = 0;
         int resolved = 0;
 
+        // Resolve every reference first (in order), then build the bundles -- each one
+        // decompiles with its own decompiler -- on several workers, and put them back in
+        // request order. Serial bundles made a bulk request cost one decompile per function
+        // back to back; the decompiler scales to ~4-8 concurrent workers.
+        List<String> order = new ArrayList<>();
+        List<Function> toBuild = new ArrayList<>();
+        List<String> buildRefs = new ArrayList<>();
         for (String raw : refs) {
             if (requested >= MAX_FUNCTIONS) {
                 break;
@@ -198,23 +207,35 @@ public class FunctionBundleService {
                 continue;
             }
             requested++;
+            order.add(funcRef);
             ServiceUtils.FunctionOrError lookup = ServiceUtils.getFunctionOrError(program, funcRef);
             if (lookup.hasError()) {
                 functions.put(funcRef, new LinkedHashMap<>(Map.of("error", lookup.message())));
                 continue;
             }
-            Function func = lookup.function();
-            try {
-                functions.put(funcRef, buildBundle(program, func, fields, includeCallContext,
-                    callContextLimit, callContextLines, includeDisasm));
-                resolved++;
-            } catch (Exception e) {
+            toBuild.add(lookup.function());
+            buildRefs.add(funcRef);
+        }
+        List<Object> built = ServiceUtils.parallelOrdered(toBuild, func -> buildBundle(program, func, fields,
+            includeCallContext, callContextLimit, callContextLines, includeDisasm));
+        Map<String, Object> byRef = new LinkedHashMap<>();
+        for (int i = 0; i < toBuild.size(); i++) {
+            Object r = built.get(i);
+            if (r instanceof Exception e) {
                 String msg = e.getMessage() != null ? e.getMessage() : e.toString();
                 Map<String, Object> err = new LinkedHashMap<>();
-                err.put("error", "Failed to build bundle for " + func.getName() + ": " + msg);
-                functions.put(funcRef, err);
+                err.put("error", "Failed to build bundle for " + toBuild.get(i).getName() + ": " + msg);
+                byRef.put(buildRefs.get(i), err);
+            } else {
+                byRef.put(buildRefs.get(i), r);
+                resolved++;
             }
         }
+        Map<String, Object> ordered = new LinkedHashMap<>();
+        for (String ref : order) {
+            ordered.put(ref, byRef.containsKey(ref) ? byRef.get(ref) : functions.get(ref));
+        }
+        functions = ordered;
 
         if (requested == 0) {
             return Response.err("functions parameter is required for bulk mode");

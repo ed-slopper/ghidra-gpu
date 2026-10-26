@@ -74,7 +74,7 @@ Every place a non-GPU tool (or a helper it calls) iterates a whole-program colle
 
 Every other non-ported tool touches a bounded number of records per call (one address, one function, one type, one setting) or is lifecycle/I-O.
 
-**Independent review.** A separate session read these sections against the source and an 80,818-function test run ([docs/reviews](reviews/)) and concluded: "The classification is accurate as a GPU question: nothing listed as non-ported has data-parallel arithmetic a kernel would win on." Its CPU-side findings were acted on where they touch the GPU tools (extraction cache, decompile without C text, decompile threads capped at the measured knee); the rest are noted in docs/GPU.md.
+**Independent review.** A separate session read these sections against the source and an 80,818-function test run ([docs/reviews](reviews/)) and concluded: "The classification is accurate as a GPU question: nothing listed as non-ported has data-parallel arithmetic a kernel would win on." Its CPU-side findings were acted on where they touch the GPU tools (extraction cache, decompile without C text, decompile threads capped at the measured knee) and on the upstream tools it named (bulk get_functions and analyze_struct_field_usage now decompile on the worker pool); batching list_globals' reference counts was measured slower and not equivalent, so it was left as is (docs/GPU.md).
 
 
 ## Not ported: nothing a GPU could compute

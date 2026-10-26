@@ -30,6 +30,7 @@ call (see [GPU.md](GPU.md)).
 | Task in a decompilation workflow | Tool | Use | Measured (CPU vs GPU) |
 | --- | --- | --- | --- |
 | Decompile one function | `force_decompile`, `get_functions` | CPU (only option) | ~350 ms per call on kernel32 |
+| C for up to 20 functions | `get_functions functions=a,b,...` | CPU, parallel workers | 20 bundles: 5.8 s on 1 worker, 0.95 s on 8 |
 | Decompile many functions + analyse results | `gpu_decompile_batch` | CPU decompile; analysis: `auto` | 2,000 fns: 11.2 s decompile; dominators 0.8/1.9 ms, return slice 47/7 ms |
 | Find crypto routines (AES/SHA/CRC/TEA... tables) | `gpu_detect_crypto_constants` | **GPU** | 4,381 / 44 ms (100x) on 24 MB |
 | Find anti-debug / anti-VM code | `gpu_find_anti_analysis` | **GPU** | 5,554 / 96 ms (58x) |

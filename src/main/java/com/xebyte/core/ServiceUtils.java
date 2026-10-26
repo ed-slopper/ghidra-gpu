@@ -592,6 +592,89 @@ public final class ServiceUtils {
      * {@code program}; the caller owns its lifecycle and must call
      * {@link DecompInterface#dispose()} when finished.
      */
+    /**
+     * Worker count for many-function decompiles: min(8, cores, work). Measured on kernel32
+     * (300 functions): 1/2/4/8/16 workers took 12.6/5.4/3.3/3.2/3.8 s -- each worker's native
+     * decompiler calls back into the shared program database, so it flattens by 4-8.
+     */
+    public static int decompileWorkers(int work) {
+        int cap = Integer.getInteger("ghidra.mcp.decompileWorkers", 8);
+        return Math.max(1, Math.min(work, Math.min(cap, Runtime.getRuntime().availableProcessors())));
+    }
+
+    /**
+     * {@code fn} over {@code items} on {@link #decompileWorkers} threads, results in input
+     * order. For per-item work that decompiles (each item builds its own decompiler). An
+     * item that throws yields the exception in its slot, so one failure cannot lose the rest.
+     */
+    public static <T, R> java.util.List<Object> parallelOrdered(java.util.List<T> items,
+            java.util.function.Function<T, R> fn) {
+        Object[] out = new Object[items.size()];
+        java.util.concurrent.atomic.AtomicInteger next = new java.util.concurrent.atomic.AtomicInteger();
+        Runnable worker = () -> {
+            int i;
+            while ((i = next.getAndIncrement()) < items.size()) {
+                try {
+                    out[i] = fn.apply(items.get(i));
+                } catch (Exception e) {
+                    out[i] = e;
+                }
+            }
+        };
+        runWorkers(decompileWorkers(items.size()), worker);
+        return java.util.Arrays.asList(out);
+    }
+
+    /**
+     * Decompiles {@code functions} on {@link #decompileWorkers} threads, each with its own
+     * configured {@link DecompInterface}; results in input order (null where it failed).
+     */
+    public static java.util.List<ghidra.app.decompiler.DecompileResults> decompileAll(Program program,
+            java.util.List<Function> functions, int timeoutSeconds) {
+        ghidra.app.decompiler.DecompileResults[] out = new ghidra.app.decompiler.DecompileResults[functions.size()];
+        java.util.concurrent.atomic.AtomicInteger next = new java.util.concurrent.atomic.AtomicInteger();
+        Runnable worker = () -> {
+            DecompInterface decomp = createConfiguredDecompiler(program);
+            try {
+                int i;
+                while ((i = next.getAndIncrement()) < functions.size()) {
+                    try {
+                        out[i] = decomp.decompileFunction(functions.get(i), timeoutSeconds,
+                            new ghidra.util.task.ConsoleTaskMonitor());
+                    } catch (Exception e) {
+                        out[i] = null;
+                    }
+                }
+            } finally {
+                decomp.dispose();
+            }
+        };
+        runWorkers(decompileWorkers(functions.size()), worker);
+        return java.util.Arrays.asList(out);
+    }
+
+    private static void runWorkers(int n, Runnable worker) {
+        if (n <= 1) {
+            worker.run();
+            return;
+        }
+        java.util.List<Thread> threads = new java.util.ArrayList<>();
+        for (int t = 0; t < n; t++) {
+            Thread th = new Thread(worker, "mcp-decompile-" + t);
+            th.setDaemon(true);
+            threads.add(th);
+            th.start();
+        }
+        for (Thread th : threads) {
+            try {
+                th.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
     public static DecompInterface createConfiguredDecompiler(Program program) {
         return createConfiguredDecompiler(program, null);
     }

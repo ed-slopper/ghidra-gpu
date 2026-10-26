@@ -11,7 +11,6 @@ import ghidra.program.model.symbol.SymbolIterator;
 import ghidra.program.model.symbol.ReferenceManager;
 import ghidra.program.model.symbol.Reference;
 import ghidra.program.model.symbol.ReferenceIterator;
-import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.util.Msg;
 import ghidra.util.InvalidNameException;
@@ -2548,19 +2547,20 @@ public class DataTypeService {
 
                     // Decompile all functions and analyze field usage
                     Map<Integer, FieldUsageInfo> fieldUsageMap = new HashMap<>();
-                    DecompInterface decomp = null;
-
-                    // CRITICAL FIX #2: Resource management with try-finally
-                    try {
-                        decomp = ServiceUtils.createConfiguredDecompiler(program);
-
+                    {
                         long analysisStart = System.currentTimeMillis();
                         Msg.info(this, "Analyzing struct at " + addressStr + " with " + functionsToAnalyze.size() + " functions");
 
-                        for (Function func : functionsToAnalyze) {
+                        // Decompile on several workers (each with its own decompiler), then
+                        // scan the C text here in iteration order. Serially this was one
+                        // decompile per referencing function, back to back.
+                        List<Function> funcList = new ArrayList<>(functionsToAnalyze);
+                        List<DecompileResults> decompiled =
+                            ServiceUtils.decompileAll(program, funcList, DECOMPILE_TIMEOUT_SECONDS);
+                        for (int fi = 0; fi < funcList.size(); fi++) {
+                            Function func = funcList.get(fi);
                             try {
-                                DecompileResults results = decomp.decompileFunction(func, DECOMPILE_TIMEOUT_SECONDS,
-                                                                                   new ConsoleTaskMonitor());
+                                DecompileResults results = decompiled.get(fi);
                                 if (results != null && results.decompileCompleted()) {
                                     String decompiledCode = results.getDecompiledFunction().getC();
                                     analyzeFieldUsageInCode(decompiledCode, struct, fieldUsageMap, addr.toString());
@@ -2577,11 +2577,6 @@ public class DataTypeService {
                         Msg.info(this, "Field analysis completed in " + analysisTime + "ms, found " +
                                  fieldUsageMap.size() + " fields with usage data");
 
-                    } finally {
-                        // CRITICAL FIX #2: Always dispose of DecompInterface
-                        if (decomp != null) {
-                            decomp.dispose();
-                        }
                     }
 
                     // Build response with field analysis

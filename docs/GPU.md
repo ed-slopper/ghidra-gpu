@@ -139,9 +139,27 @@ point of keeping both backends.
   (`toggleCCode(false)`); they only use the HighFunction.
 - Decompile threads default to min(8, cores): 300 kernel32 functions took 12.6 / 5.4 / 3.3 /
   3.2 / 3.8 s on 1 / 2 / 4 / 8 / 16 threads.
-- Not done (CPU-side, upstream tools): bulk `get_functions` and `analyze_struct_field_usage`
-  still decompile serially, and `list_globals` counts references per symbol -- both found by the
-  independent review in [docs/reviews](reviews/).
+- Bulk `get_functions` (`functions=`, up to 20) and `analyze_struct_field_usage` now decompile
+  on the same worker pool (`ServiceUtils.decompileAll` / `parallelOrdered`, one decompiler per
+  worker, results in request order). Measured live on kernel32, restarting the server at each
+  `-Dghidra.mcp.decompileWorkers` cap (default 8):
+
+  | workers | bulk `get_functions` x20 (with C) | `analyze_struct_field_usage` (16 fns) |
+  | --- | --- | --- |
+  | 1 | 5,846 ms | 3,993 ms |
+  | 2 | 3,083 ms | 2,772 ms |
+  | 4 | 1,590 ms | 2,546 ms |
+  | 8 | 952 ms | 2,573 ms |
+
+  Bundles were byte-identical to one-at-a-time calls and field-usage counts identical at every
+  worker count. The struct analysis flattens at 4 because one large referencing function is
+  the critical path.
+- `list_globals`' per-symbol `getReferenceCountTo` was **left as is**, on measurement: one pass
+  over every reference (69,609 on kernel32) to count destinations took 30.9 ms against 0.6 ms
+  for the 1,854 indexed per-symbol counts, and it is not the same number -- the reference
+  iterator covers memory references from the program's minimum address, while
+  `getReferenceCountTo` counts every reference to the address (1,746 of 1,854 counts differed).
+  The review's suggestion assumed the per-symbol read was the cost; it is an index lookup.
 
 ## Independent test (80,818-function binary)
 
