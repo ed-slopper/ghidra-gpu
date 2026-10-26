@@ -19,7 +19,11 @@ call (see [GPU.md](GPU.md)).
   where copying the data to the GPU costs more than the scan.
 - **Reading the program is CPU-bound and serial.** Ghidra's database lock serialises reads;
   `execution.extract_ms` shows it. On very large binaries it can dominate (45 s of
-  extraction against 82 ms of GPU hashing). Extract once, then run several GPU passes.
+  extraction against 82 ms of GPU hashing). The first call pays it; later calls on the
+  unchanged program reuse the cached arrays (`execution.extract_cache: hit`), so run several
+  GPU tools back to back before editing.
+- **Batch-decompile with ~8 threads, not more.** Scaling flattens at 4-8 workers (300
+  functions: 12.6 s on 1 thread, 3.2 s on 8, 3.8 s on 16); that is the default.
 
 ## Task table
 

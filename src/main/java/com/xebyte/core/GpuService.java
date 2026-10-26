@@ -234,7 +234,7 @@ public class GpuService {
                                              List<String> categories, boolean execOnly, String block, int alignment,
                                              int limit, Backend backend) {
         long t0 = System.nanoTime();
-        ProgramData.Regions rs = ProgramData.regions(p, execOnly, block, maxBytes());
+        ProgramData.Regions rs = ProgramData.cachedRegions(p, execOnly, block, maxBytes());
         double extractMs = ms(t0);
         long patBytes = 0;
         for (byte[] b : pats) patBytes += b.length;
@@ -322,7 +322,7 @@ public class GpuService {
         Backend be;
         try { be = Backend.parse(backend); } catch (IllegalArgumentException e) { return Response.err(e.getMessage()); }
         long t0 = System.nanoTime();
-        ProgramData.Regions rs = ProgramData.regions(p, false, null, maxBytes());
+        ProgramData.Regions rs = ProgramData.cachedRegions(p, false, null, maxBytes());
         double extractMs = ms(t0);
         boolean doAscii = !encoding.equalsIgnoreCase("utf16"), doWide = !encoding.equalsIgnoreCase("ascii");
         int cap = 4_000_000;
@@ -419,7 +419,7 @@ public class GpuService {
         try { be = Backend.parse(backend); } catch (IllegalArgumentException e) { return Response.err(e.getMessage()); }
         int win = Math.max(64, window);
         long t0 = System.nanoTime();
-        ProgramData.Regions rs = ProgramData.regions(pe.program(), false, block, maxBytes());
+        ProgramData.Regions rs = ProgramData.cachedRegions(pe.program(), false, block, maxBytes());
         double extractMs = ms(t0);
         Dispatch.Outcome<List<float[]>> o = Dispatch.run(Ops.ENTROPY, be, rs.bytes(),
             () -> { List<float[]> l = new ArrayList<>(); for (ProgramData.Region r : rs.regions()) l.add(ScanOps.entropyCpu(r.bytes(), win)); return l; },
@@ -530,7 +530,7 @@ public class GpuService {
         long flo = lo, fhi = hi;
         boolean bigEndian = p.getLanguage().isBigEndian();
         long t0 = System.nanoTime();
-        ProgramData.Regions rs = ProgramData.regions(p, false, block, maxBytes());
+        ProgramData.Regions rs = ProgramData.cachedRegions(p, false, block, maxBytes());
         double extractMs = ms(t0);
         int max = Math.max(1, limit);
         Dispatch.Outcome<List<ScanOps.Hits>> o = Dispatch.run(Ops.POINTER_SCAN, be, rs.bytes(),
@@ -725,7 +725,7 @@ public class GpuService {
         Set<String> want = new HashSet<>();
         if (types != null && !types.isBlank()) for (String t : types.split(",")) want.add(t.trim().toLowerCase(Locale.ROOT));
         long t0 = System.nanoTime();
-        ProgramData.Regions rs = ProgramData.regions(p, false, null, maxBytes());
+        ProgramData.Regions rs = ProgramData.cachedRegions(p, false, null, maxBytes());
         double extractMs = ms(t0);
         int cap = 1 << 20;
         Dispatch.Outcome<List<ScanOps.Hits>> o = Dispatch.run(Ops.IOC_SCAN, be, rs.bytes(),
@@ -907,7 +907,7 @@ public class GpuService {
             }
         }
         byte[] scalars = packed.toByteArray();
-        ProgramData.Regions rs = ProgramData.regions(p, false, null, maxBytes());
+        ProgramData.Regions rs = ProgramData.cachedRegions(p, false, null, maxBytes());
         double extractMs = ms(t0);
         int cap = Math.max(1, scalars.length / 8);
         Dispatch.Outcome<ScanOps.Hits> sc = Dispatch.run(Ops.POINTER_SCAN, be, scalars.length,
@@ -1111,7 +1111,8 @@ public class GpuService {
         Backend be;
         try { be = Backend.parse(backend); } catch (IllegalArgumentException e) { return Response.err(e.getMessage()); }
         long t0 = System.nanoTime();
-        ProgramData.InstructionText it = ProgramData.instructionText(p, null, Math.max(1, maxInstructions));
+        ProgramData.InstructionText it = ProgramData.cached(p, "instext:" + maxInstructions,
+            () -> ProgramData.instructionText(p, null, Math.max(1, maxInstructions)));
         double extractMs = ms(t0);
         byte[] needle = query.getBytes(StandardCharsets.UTF_8);
         Dispatch.Outcome<int[]> o = Dispatch.run(Ops.SUBSTRING, be, it.packed().bytes().length,
@@ -1203,14 +1204,22 @@ public class GpuService {
         boolean opcode = "opcode".equalsIgnoreCase(kind);
         if (!opcode && !"normalized".equalsIgnoreCase(kind)) return Response.err("kind must be normalized or opcode");
         long t0 = System.nanoTime();
+        Object[] all = ProgramData.cached(p, "hashtext:" + (opcode ? "opcode" : "normalized"), () -> {
+            List<Function> af = new ArrayList<>();
+            for (Function f : ProgramData.functions(p)) if (!f.isThunk() && !f.isExternal()) af.add(f);
+            return new Object[] {af, ProgramData.parallelMap(af,
+                f -> opcode ? ProgramData.opcodeText(p, f) : ProgramData.normalizedText(p, f))};
+        });
+        @SuppressWarnings("unchecked") List<Function> allFns = (List<Function>) all[0];
+        @SuppressWarnings("unchecked") List<byte[]> allTexts = (List<byte[]>) all[1];
         List<Function> fns = new ArrayList<>();
-        for (Function f : ProgramData.functions(p)) {
-            if (f.isThunk() || f.isExternal()) continue;
-            if (filter != null && !filter.isEmpty() && !f.getName().toLowerCase(Locale.ROOT).contains(filter.toLowerCase(Locale.ROOT))) continue;
-            fns.add(f);
+        List<byte[]> texts = new ArrayList<>();
+        String want = filter == null ? "" : filter.toLowerCase(Locale.ROOT);
+        for (int i = 0; i < allFns.size(); i++) {
+            if (!want.isEmpty() && !allFns.get(i).getName().toLowerCase(Locale.ROOT).contains(want)) continue;
+            fns.add(allFns.get(i));
+            texts.add(allTexts.get(i));
         }
-        List<byte[]> texts = ProgramData.parallelMap(fns,
-            f -> opcode ? ProgramData.opcodeText(p, f) : ProgramData.normalizedText(p, f));
         ScanOps.Packed packed = packBytes(texts);
         double extractMs = ms(t0);
         Dispatch.Outcome<byte[]> o = Dispatch.run(Ops.SHA256, be, packed.bytes().length,
@@ -1397,14 +1406,20 @@ public class GpuService {
         }
         if (anyAgree) m.put("agree", agree);
         m.put("extract_ms", extractMs);
+        String cache = ProgramData.takeCacheOutcome();
+        if (cache != null) m.put("extract_cache", cache);
         return m;
     }
 
     /** Non-thunk functions with >= minInstructions, and their mnemonic tokens (parallel read, ordered ids). */
     static void collectTokens(Program p, int minInstructions, Map<String, Integer> vocab, List<Function> fns, List<int[]> tokens) {
-        List<Function> all = new ArrayList<>();
-        for (Function f : ProgramData.functions(p)) if (!f.isThunk() && !f.isExternal()) all.add(f);
-        List<String[]> mn = ProgramData.parallelMap(all, f -> ProgramData.mnemonics(p, f));
+        Object[] c = ProgramData.cached(p, "mnemonics", () -> {
+            List<Function> af = new ArrayList<>();
+            for (Function f : ProgramData.functions(p)) if (!f.isThunk() && !f.isExternal()) af.add(f);
+            return new Object[] {af, ProgramData.parallelMap(af, f -> ProgramData.mnemonics(p, f))};
+        });
+        @SuppressWarnings("unchecked") List<Function> all = (List<Function>) c[0];
+        @SuppressWarnings("unchecked") List<String[]> mn = (List<String[]>) c[1];
         for (int i = 0; i < all.size(); i++) {
             if (mn.get(i).length < minInstructions) continue;
             fns.add(all.get(i));
@@ -1497,7 +1512,7 @@ public class GpuService {
         long t0 = System.nanoTime();
         ProgramData.CallGraph cg;
         try {
-            cg = ProgramData.callGraph(p, TaskMonitor.DUMMY);
+            cg = ProgramData.cachedCallGraph(p, TaskMonitor.DUMMY);
         } catch (Exception e) {
             return Response.err("call graph extraction failed: " + e.getMessage());
         }
@@ -1592,6 +1607,8 @@ public class GpuService {
         }
         Map<String, Object> ex = new LinkedHashMap<>();
         ex.put("extract_ms", extractMs);
+        String cache = ProgramData.takeCacheOutcome();
+        if (cache != null) ex.put("extract_cache", cache);
         ex.put("scc", scc.meta());
         ex.put("pagerank", pr.meta());
         if (reach != null) ex.put("reachability", reach.meta());
@@ -1642,7 +1659,11 @@ public class GpuService {
         long t0 = System.nanoTime();
         ProgramData.CfgBatch cb;
         try {
-            cb = ProgramData.cfgs(p, fns, TaskMonitor.DUMMY);
+            List<Function> fl = fns;
+            cb = (function == null || function.isBlank())
+                ? ProgramData.cached(p, "cfgs:all:" + maxFunctions, () -> {
+                    try { return ProgramData.cfgs(p, fl, TaskMonitor.DUMMY); } catch (Exception e) { throw new IllegalStateException(e); } })
+                : ProgramData.cfgs(p, fns, TaskMonitor.DUMMY);
         } catch (Exception e) {
             return Response.err("CFG extraction failed: " + e.getMessage());
         }
@@ -1735,6 +1756,7 @@ public class GpuService {
         HighFunction hf;
         DecompInterface ifc = new DecompInterface();
         try {
+            ifc.toggleCCode(false);   // only the HighFunction is used: skip printing C
             ifc.openProgram(p);
             DecompileResults res = ifc.decompileFunction(fn, 60, TaskMonitor.DUMMY);
             hf = res.getHighFunction();
@@ -1830,7 +1852,7 @@ public class GpuService {
     public Response gpuDecompileBatch(
             @Param(value = "functions", defaultValue = "", description = "Comma-separated names/addresses; empty = all non-thunk functions up to max_functions") String functions,
             @Param(value = "max_functions", defaultValue = "200", description = "Cap when functions is empty") int maxFunctions,
-            @Param(value = "threads", defaultValue = "0", description = "Decompiler threads; 0 = available processors") int threads,
+            @Param(value = "threads", defaultValue = "0", description = "Decompiler threads; 0 = min(8, processors), where scaling flattens") int threads,
             @Param(value = "timeout_secs", defaultValue = "60", description = "Per-function decompile timeout") int timeoutSecs,
             @Param(value = "limit", defaultValue = "100", description = "Max functions listed") int limit,
             @Param(value = "backend", defaultValue = "auto", description = P_BACKEND) String backend,
@@ -1858,7 +1880,10 @@ public class GpuService {
         if (fns.isEmpty()) return Response.err("no functions to decompile");
 
         // Stage 1: native decompiler, CPU, one DecompInterface per worker thread.
-        int nThreads = threads > 0 ? threads : Math.max(1, Runtime.getRuntime().availableProcessors());
+        // Default capped at 8: measured on kernel32 (300 functions) 1/2/4/8/16 threads took
+        // 12.6/5.4/3.3/3.2/3.8 s -- the native decompiler's callbacks into the shared program
+        // database flatten it by 4-8 workers, and more only add decompiler processes.
+        int nThreads = threads > 0 ? threads : Math.max(1, Math.min(8, Runtime.getRuntime().availableProcessors()));
         nThreads = Math.min(nThreads, fns.size());
         long t0 = System.nanoTime();
         Decompiled[] out = new Decompiled[fns.size()];
@@ -1868,6 +1893,7 @@ public class GpuService {
             Thread th = new Thread(() -> {
                 DecompInterface ifc = new DecompInterface();
                 try {
+                    ifc.toggleCCode(false);   // only the HighFunction is used: skip printing C
                     ifc.openProgram(p);
                     int i;
                     while ((i = next.getAndIncrement()) < fns.size()) out[i] = reduce(ifc, fns.get(i), timeoutSecs);
@@ -2484,6 +2510,8 @@ public class GpuService {
     static Map<String, Object> exec(Dispatch.Outcome<?> o, double extractMs) {
         Map<String, Object> m = new LinkedHashMap<>(o.meta());
         m.put("extract_ms", extractMs);
+        String cache = ProgramData.takeCacheOutcome();
+        if (cache != null) m.put("extract_cache", cache);
         return m;
     }
 

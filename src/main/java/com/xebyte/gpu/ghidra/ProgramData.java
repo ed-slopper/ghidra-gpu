@@ -44,6 +44,75 @@ public final class ProgramData {
 
     private ProgramData() {}
 
+    // ------------------------------------------------------------------ extraction cache
+
+    /**
+     * Extracted arrays per program, valid while {@link Program#getModificationNumber()} is
+     * unchanged. Extraction (program-database reads under Ghidra's lock) dominated wall time
+     * on an 80k-function binary -- 45 s for hash texts, 41 s for CFGs, 11 s for the call
+     * graph, against milliseconds of GPU work -- and an agent calls several tools on the same
+     * unchanged program, so later calls reuse the first one's arrays. Any edit bumps the
+     * modification number and invalidates. -Dghidra.gpu.extractCache=false disables it.
+     * Cached values are shared: callers must not mutate them.
+     */
+    private static final java.util.Map<Program, java.util.LinkedHashMap<String, Object[]>> CACHE =
+        java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+    private static final int CACHE_KEYS_PER_PROGRAM = 12;
+    private static final ThreadLocal<int[]> CACHE_STATS = ThreadLocal.withInitial(() -> new int[2]);
+
+    @SuppressWarnings("unchecked")
+    public static <T> T cached(Program p, String key, java.util.function.Supplier<T> extract) {
+        if ("false".equalsIgnoreCase(System.getProperty("ghidra.gpu.extractCache"))) {
+            CACHE_STATS.get()[1]++;
+            return extract.get();
+        }
+        long mod = p.getModificationNumber();
+        java.util.LinkedHashMap<String, Object[]> m;
+        synchronized (CACHE) {
+            m = CACHE.computeIfAbsent(p, k -> new java.util.LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<String, Object[]> e) {
+                    return size() > CACHE_KEYS_PER_PROGRAM;
+                }
+            });
+        }
+        synchronized (m) {
+            Object[] e = m.get(key);
+            if (e != null && (Long) e[0] == mod) {
+                CACHE_STATS.get()[0]++;
+                return (T) e[1];
+            }
+        }
+        T v = extract.get();
+        CACHE_STATS.get()[1]++;
+        synchronized (m) {
+            m.put(key, new Object[] {mod, v});
+        }
+        return v;
+    }
+
+    /** "hit", "miss" or "mixed" for the cache lookups this thread made since the last call; null if none. */
+    public static String takeCacheOutcome() {
+        int[] st = CACHE_STATS.get();
+        String r = st[0] + st[1] == 0 ? null : st[1] == 0 ? "hit" : st[0] == 0 ? "miss" : "mixed";
+        st[0] = st[1] = 0;
+        return r;
+    }
+
+    public static Regions cachedRegions(Program p, boolean execOnly, String blockName, long maxBytes) {
+        return cached(p, "regions:" + execOnly + ":" + blockName + ":" + maxBytes, () -> regions(p, execOnly, blockName, maxBytes));
+    }
+
+    public static CallGraph cachedCallGraph(Program p, TaskMonitor monitor) {
+        return cached(p, "callgraph", () -> {
+            try {
+                return callGraph(p, monitor);
+            } catch (CancelledException e) {
+                throw new IllegalStateException(e);
+            }
+        });
+    }
+
     // ------------------------------------------------------------------ memory
 
     /** One initialized memory block's bytes. */

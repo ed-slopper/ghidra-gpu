@@ -36,6 +36,10 @@ headless server, 211 on both).
 - **Hand review** of every program-wide loop in the non-GPU tools, recorded in docs/GPU_COVERAGE.md;
   the four it found worth porting are ported above.
 - **docs/GPU_DECOMPILE_GUIDE.md**: which decompilation/RE tasks belong on the GPU, from measurements.
+- **Independent review** (docs/reviews/): a separate session found the coverage classification accurate as a
+  GPU question; acting on its CPU-side findings, extracted program data is now cached per program
+  (keyed by modification number; repeat calls 0-7 ms instead of 0.8-2.8 s on kernel32), GPU decompiles
+  skip C printing, and decompile threads default to min(8, cores) where scaling measured flat.
 - **Fix: `/debugger/static_to_dynamic`** only resolved programs open in the Debugger tool, so a
   program open in the CodeBrowser always waited out the 10 s settle timeout and failed; it now opens
   the program in the Debugger tool first (verified live: 3 ms on the first call).

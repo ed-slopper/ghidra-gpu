@@ -128,6 +128,21 @@ entropy, pointer scan, FNV) did not beat the CPU up to 4 MB because the PCIe cop
 dominates, and small graphs stay on the CPU; `auto` routes them accordingly. That is the
 point of keeping both backends.
 
+## Extraction cache and decompile threads
+
+- Extracted program data (memory regions, call graph, CFGs, hash texts, mnemonic streams,
+  instruction text) is cached per program and reused while `Program.getModificationNumber()`
+  is unchanged; any edit invalidates it. On kernel32 repeat calls dropped from 2.8 s / 2.6 s /
+  0.8 s of extraction to 0-7 ms. `execution.extract_cache` says `hit` or `miss`;
+  `-Dghidra.gpu.extractCache=false` disables it.
+- `gpu_decompile_batch` and `gpu_dataflow_slice` no longer ask the decompiler for C text
+  (`toggleCCode(false)`); they only use the HighFunction.
+- Decompile threads default to min(8, cores): 300 kernel32 functions took 12.6 / 5.4 / 3.3 /
+  3.2 / 3.8 s on 1 / 2 / 4 / 8 / 16 threads.
+- Not done (CPU-side, upstream tools): bulk `get_functions` and `analyze_struct_field_usage`
+  still decompile serially, and `list_globals` counts references per symbol -- both found by the
+  independent review in [docs/reviews](reviews/).
+
 ## Independent test (80,818-function binary)
 
 A separate session ran the suite against Townscaper's `GameAssembly.dll` (x86-32, 24 MB,
